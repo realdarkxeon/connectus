@@ -13,7 +13,13 @@
     "@connectus/adapters": "workspace:*",
     "@connectus/core": "workspace:*",
     "@hono/node-server": "2.1.3",
+    "grammy": "1.46.0",
     "hono": "4.13.13",
+    "pg": "8.23.1",
+    "pg-boss": "12.36.0",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
   }
 }

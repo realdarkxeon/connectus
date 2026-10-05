@@ -6,16 +6,26 @@ import { z } from "zod";
 
 const base = {
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  APP_ENV: z.enum(["local", "staging", "production"]).default("local"),
+  DATABASE_URL: z.string().startsWith("postgres"),
+};
+
+const telegram = {
+  TELEGRAM_BOT_TOKEN: z.string().regex(/^\d+:[\w-]+$/),
+  // Telegram allows 1-256 chars of A-Z, a-z, 0-9, _ and -. We require at least 32.
+  TELEGRAM_WEBHOOK_SECRET: z.string().regex(/^[\w-]{32,256}$/),
 };
 
 export const serverSchema = z.object({
   ...base,
+  ...telegram,
   PORT: z.coerce.number().int().positive().default(3000),
 });
 export type ServerConfig = z.infer<typeof serverSchema>;
 
 export const workerSchema = z.object({
   ...base,
+  ...telegram,
 });
 export type WorkerConfig = z.infer<typeof workerSchema>;
 
