@@ -1,7 +1,7 @@
 -- Rules the database enforces even for the server's master key.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(9);
+select plan(11);
 
 insert into public.company (id, name) values
   ('a0000000-0000-0000-0000-000000000000', 'A-Build'),
@@ -36,6 +36,19 @@ select throws_ok(
      ('a0000000-0000-0000-0000-000000000000', 'a2000000-0000-0000-0000-000000000001', 'telegram', 'tg-1'),
      ('a0000000-0000-0000-0000-000000000000', 'a2000000-0000-0000-0000-000000000001', 'telegram', 'tg-1') $$,
   '23505', null, 'one Telegram account cannot belong to two people'
+);
+
+-- Telegram message ids repeat across chats, so the stored id is '<chat_id>:<message_id>'.
+select lives_ok(
+  $$ insert into public.message (company_id, person_id, channel, external_message_id, kind) values
+     ('a0000000-0000-0000-0000-000000000000', 'a2000000-0000-0000-0000-000000000001', 'telegram', '555:57', 'text'),
+     ('a0000000-0000-0000-0000-000000000000', 'a2000000-0000-0000-0000-000000000001', 'telegram', '777:57', 'text') $$,
+  'the same message number in two different chats is two messages'
+);
+select throws_ok(
+  $$ insert into private.unrouted_message (channel, external_message_id, external_user_id, kind) values
+     ('telegram', '999:1', '999', 'text'), ('telegram', '999:1', '999', 'text') $$,
+  '23505', null, 'a duplicate message from an unknown sender is rejected'
 );
 
 -- The company-stamp rule on links.

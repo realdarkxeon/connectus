@@ -1,7 +1,7 @@
 -- Tripwires for every current and future table in public (hard rule 6).
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(4);
+select plan(7);
 
 select is(
   array(
@@ -47,6 +47,24 @@ select is(
   ),
   '{}'::text[],
   'authenticated can only read; all writes go through the server'
+);
+
+-- The waiting room for unknown senders (private schema, no company by definition).
+select ok(
+  (select c.relrowsecurity from pg_class c join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'private' and c.relname = 'unrouted_message'),
+  'the waiting room has row level security enabled'
+);
+select ok(
+  not has_table_privilege('anon', 'private.unrouted_message', 'select, insert, update, delete')
+  and not has_table_privilege('authenticated', 'private.unrouted_message', 'select, insert, update, delete'),
+  'no client role can touch the waiting room'
+);
+
+select is(
+  (select public from storage.buckets where id = 'media'),
+  false,
+  'the media bucket exists and is private'
 );
 
 select * from finish();
