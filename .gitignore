@@ -18,3 +18,7 @@ coverage/
 # Supabase local
 supabase/.branches/
 supabase/.temp/
+
+# Editor
+*.swp
+*.swo

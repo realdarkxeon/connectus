@@ -83,6 +83,17 @@ RLS per company_id. Roles: owner all, deputy own sites, PM own requests.
 Mini App auth: verify Telegram initData HMAC server-side. Media via short-lived signed
 URLs. Secrets in Railway env vars only.
 
+## Secrets
+- Four places: password manager (source of truth), local `.env` (local/staging keys only,
+  gitignored), Railway Variables per environment, GitHub Actions secrets (none yet).
+- `.env.example` lists every variable name, no values. Keep it in sync with code.
+- One key per environment (local, staging, production). Never share a key across them.
+- `SUPABASE_SECRET_KEY` bypasses RLS: server only, never in the Mini App or any client.
+- `DATABASE_URL` is the Supavisor session pooler (5432): IPv4 (Railway has no outbound
+  IPv6) and full session semantics, unlike the transaction pooler (6543).
+- Leaked key = rotate immediately at the provider. Deleting the commit is not enough.
+- Claude Code is denied reading `.env*` and `secrets/**` via `.claude/settings.json`.
+
 ## Deployment
 GitHub -> Railway. One Docker image, services `api` and `worker`.
 Environments: local (test bot + tunnel), staging (staging bot), production.

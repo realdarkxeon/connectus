@@ -16,3 +16,4 @@ Format: date, decision, why, status. Newest at the bottom. Reversals get a new e
 - 2026-10: Owner voice replies sent as original audio + verbatim transcript; AI rewrite dropped (risk of misrepresenting the owner). Locked
 - 2026-10: Built multi-tenant, any number of sites; pilot on 3 sites, ~10 PMs. Locked
 - 2026-10: Full self-hosting of models deferred until data-residency requirement and volume justify a GPU. Open
+- 2026-10: Secrets: password manager is source of truth; .env (local/staging) + Railway Variables per environment; one key per environment; Supabase publishable/secret keys (legacy anon/service_role deprecated end of 2026); DATABASE_URL = session pooler (IPv4 for Railway, full session semantics for pg-boss and migrations); Claude Code denied reading .env*. Keys never pass through chat. Locked
