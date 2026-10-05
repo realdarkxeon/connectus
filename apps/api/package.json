@@ -3,10 +3,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc -p ."
+    "typecheck": "tsc -p .",
+    "start": "node src/server.ts",
+    "start:worker": "node src/worker.ts",
+    "dev": "node --watch --env-file-if-exists=../../.env src/server.ts",
+    "dev:worker": "node --watch --env-file-if-exists=../../.env src/worker.ts"
   },
   "dependencies": {
     "@connectus/adapters": "workspace:*",
-    "@connectus/core": "workspace:*"
+    "@connectus/core": "workspace:*",
+    "@hono/node-server": "2.1.3",
+    "hono": "4.13.13",
+    "zod": "catalog:"
   }
 }
