@@ -47,3 +47,11 @@ jobs:
       - run: supabase db start
       - run: supabase test db
       - run: supabase db lint --fail-on error
+
+      # TypeScript tests that need the real database (transactions, pg-boss jobs).
+      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+        with:
+          runtime: node@24
+          cache: true
+          require-lockfile: true
+      - run: pnpm test:integration
