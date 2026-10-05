@@ -1,6 +1,7 @@
 # AI contracts
 
 ## Card schema (draft v1, M0 data will change the type list)
+Source of truth: packages/core/src/card.ts (zod 4).
 ```ts
 export const RequestType = z.enum([
   "spend_approval", "schedule_change", "safety_incident", "supply_problem",
@@ -12,9 +13,9 @@ export const Card = z.object({
   summary: z.string().max(200),            // Russian, one line
   ask: z.string().nullable(),              // decision answerable by approve/reject
   options: z.array(z.string()).max(4),
-  amountKzt: z.number().int().nullable(),
+  amountKzt: z.int().nullable(),           // safe integer KZT
   delayDays: z.number().nullable(),
-  decideBy: z.string().datetime().nullable(),
+  decideBy: z.iso.datetime({ offset: true }).nullable(),
   workStopped: z.boolean().nullable(),
   details: z.record(z.string(), z.unknown()),
   missing: z.array(z.object({ field: z.string(), questionToPm: z.string() })),

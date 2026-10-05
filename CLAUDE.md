@@ -34,12 +34,12 @@ Status: Iteration 3 (discovery + foundation). See docs/roadmap.md for the curren
 - supabase/migrations: SQL migrations
 
 ## Commands
-Created in Step 2. Keep this list true; update it when scripts change.
+Keep this list true; update it when scripts change. Use Node 24 (`nvm use`); pnpm 12 comes
+from `packageManager` in package.json via Corepack.
 - pnpm install
 - pnpm typecheck / pnpm lint / pnpm test
-- pnpm dev (api + worker locally, staging Telegram bot via tunnel)
-- pnpm eval (scores prompts and engines against the golden set)
-- supabase db reset (local DB from migrations)
+- pnpm format (Biome auto-fix and format)
+- Not yet created: pnpm dev (Step 3), pnpm eval (Step 6), supabase db reset (Step 2 part B)
 
 ## Hard rules
 1. Never lose a PM message. Any failure path ends in the owner seeing raw text, not silence.
