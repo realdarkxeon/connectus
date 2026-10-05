@@ -9,6 +9,12 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
-    "@connectus/core": "workspace:*"
+    "@connectus/core": "workspace:*",
+    "grammy": "1.46.0",
+    "pg": "8.23.1",
+    "pg-boss": "12.36.0"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
   }
 }
