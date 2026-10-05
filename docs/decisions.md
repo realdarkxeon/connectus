@@ -24,3 +24,6 @@ Format: date, decision, why, status. Newest at the bottom. Reversals get a new e
 - 2026-10-06: Internal workspace packages export TypeScript source; no build step. Node 24 type stripping at runtime to be verified in Step 3. Open
 - 2026-10-06: Tooling pinned: pnpm 12 via packageManager/Corepack, TypeScript 7 (native compiler), Biome 2.5, Vitest 5 (+ vite peer), zod 4. CI actions pinned by commit SHA. Locked
 - 2026-10-06: State machine is a table of allowed moves in packages/core; DONE requires a photo key. Owner "Delegate" verdict has no state yet, decide in M2. Open
+- 2026-10-06: Closes the open cost/list entry above: costs are cost_usd numeric(14,8) (exact decimal, not float); fixed value lists are text + CHECK, kept equal to packages/core by a schema-sync test. Locked
+- 2026-10-06: Primary keys are uuid (gen_random_uuid); EVENT uses bigint identity for natural ordering. Pilot volume makes UUIDv4 index fragmentation irrelevant; Postgres 17 has no native UUIDv7. Locked
+- 2026-10-06: Database tests are pgTAP in supabase/tests/database, run by `pnpm test:db` locally and in CI. Remote Supabase untouched until Step 3 (supabase db push). Locked

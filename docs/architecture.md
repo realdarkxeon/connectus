@@ -23,22 +23,29 @@ interface Clock { now(): Date }
 ```
 
 ## Data model
+Source of truth: supabase/migrations. Every table except COMPANY has company_id; children
+reference parents by (company_id, id), so no row can point at another company's row.
 - COMPANY(id, name, timezone)
 - SITE(id, company_id, name)
 - PERSON(id, company_id, role[owner|deputy|pm], display_name)
-- CHANNEL_IDENTITY(id, person_id, channel[telegram|whatsapp], external_id) unique(channel, external_id)
-- MESSAGE(id, person_id, request_id?, channel, external_message_id, kind, text?, transcript?,
-  media_key?, received_at) unique(channel, external_message_id)
-- REQUEST(id, company_id, site_id?, pm_id, type, status, urgency, amount_kzt bigint,
+- SITE_MEMBER(company_id, site_id, person_id) who works on which site
+- CHANNEL_IDENTITY(id, company_id, person_id, channel[telegram|whatsapp], external_id)
+  unique(channel, external_id)
+- MESSAGE(id, company_id, person_id, request_id?, channel, external_message_id, kind, text?,
+  transcript?, media_key?, received_at) unique(channel, external_message_id)
+- REQUEST(id, company_id, site_id?, pm_id, type?, status, urgency 1-5, amount_kzt bigint,
   decide_by, lane, card jsonb, last_message_at, created_at)
-- TRIAGE_RUN(id, request_id, engine, outputs jsonb, latency_ms, cost_usd, is_primary)
-- DECISION(id, request_id, owner_id, verdict, instruction, voice_key, decided_at)
+- TRIAGE_RUN(id, company_id, request_id, engine, outputs jsonb, latency_ms,
+  cost_usd numeric, is_primary)
+- DECISION(id, company_id, request_id, owner_id, verdict, instruction, voice_key, decided_at)
 - OWNER_RULE(id, company_id, source_text, rule jsonb, active, confirmed_at)
-- EVENT(id, company_id, request_id, type, payload jsonb, at) append-only
+- EVENT(id bigint, company_id, request_id, type, payload jsonb, at) append-only, enforced by
+  trigger for every role
 - AI_CALL(id, company_id, request_id?, provider, model, purpose, latency_ms, tokens_in,
-  tokens_out, cost_usd, ok)
+  tokens_out, cost_usd numeric, ok)
 Columns we filter on are real columns; type-specific details live in REQUEST.card.
-All tables: company_id + RLS.
+Fixed value lists are text + CHECK and must match packages/core (schema-sync test).
+IDs are uuid (gen_random_uuid) except EVENT (bigint identity, ordered).
 
 ## Request states
 Draft -> (more msgs) Draft | Discarded (noise) | Structuring (window closed)
@@ -80,6 +87,9 @@ Terminal: Done, Rejected, Merged, Discarded
 
 ## Security
 RLS per company_id. Roles: owner all, deputy own sites, PM own requests.
+Identity comes from JWT app_metadata claims (company_id, person_id, app_role), read by
+helpers in the private schema. Clients (authenticated) get SELECT only; anon gets nothing;
+all writes go through the server. AI costs, triage runs and owner rules: owner only.
 Mini App auth: verify Telegram initData HMAC server-side. Media via short-lived signed
 URLs. Secrets in Railway env vars only.
 

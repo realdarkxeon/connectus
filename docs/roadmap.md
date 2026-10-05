@@ -18,10 +18,10 @@ Discovery track (Darkhan with owner) and build track run in parallel.
 - [ ] Step 0. Accounts: GitHub repo, Railway, Supabase (Frankfurt), Anthropic key with
       spend limit, 2 Telegram bots (staging, prod), Jev waitlist, Sentry
 - [ ] Step 1. Owner interview, written consent, site + PM list, 3 pilot sites, chat exports requested
-- [ ] Step 2. Foundation: pnpm monorepo, strict TS, Biome, Vitest, GitHub Actions CI,
+- [x] Step 2. Foundation: pnpm monorepo, strict TS, Biome, Vitest, GitHub Actions CI,
       core Card schema + state machine with tests, migrations for full data model with RLS
       - [x] Part A: monorepo, tooling, CI, Card schema, state machine (2026-10-06)
-      - [ ] Part B: Supabase migrations with RLS + pgTAP tests
+      - [x] Part B: Supabase migrations with RLS + pgTAP tests (2026-10-06)
 - [ ] Step 3. Staging bot live: Hono, Telegram webhook (secret verified), idempotent
       storage, media to Storage, `ingest` enqueued, reply "получено", deployed on Railway.
       Done when a voice note appears in DB with its file in Storage

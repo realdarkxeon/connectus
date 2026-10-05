@@ -39,7 +39,11 @@ from `packageManager` in package.json via Corepack.
 - pnpm install
 - pnpm typecheck / pnpm lint / pnpm test
 - pnpm format (Biome auto-fix and format)
-- Not yet created: pnpm dev (Step 3), pnpm eval (Step 6), supabase db reset (Step 2 part B)
+- pnpm db:start / pnpm db:stop (local Supabase in Docker; Studio at localhost:54323)
+- pnpm db:reset (rebuild local DB from migrations + seed)
+- pnpm test:db (pgTAP RLS and integrity tests) / pnpm lint:db
+- New migration: pnpm exec supabase migration new <name>
+- Not yet created: pnpm dev (Step 3), pnpm eval (Step 6)
 
 ## Hard rules
 1. Never lose a PM message. Any failure path ends in the owner seeing raw text, not silence.
