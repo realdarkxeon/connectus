@@ -1,0 +1,12 @@
+{
+  "name": "@connectus/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@connectus/adapters": "workspace:*",
+    "@connectus/core": "workspace:*"
+  }
+}

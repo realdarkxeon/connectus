@@ -1,0 +1,6 @@
+packages:
+  - packages/*
+  - apps/*
+
+catalog:
+  zod: 4.6.5
