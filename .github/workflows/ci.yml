@@ -31,3 +31,19 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test
+
+  db:
+    name: migrations, RLS tests, db lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359 # v3.0.1
+        with:
+          version: 2.119.0
+
+      # Starts only Postgres and applies supabase/migrations from scratch.
+      - run: supabase db start
+      - run: supabase test db
+      - run: supabase db lint --fail-on error
