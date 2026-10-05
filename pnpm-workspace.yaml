@@ -4,3 +4,7 @@ packages:
 
 catalog:
   zod: 4.6.5
+
+# Packages allowed to run install scripts. supabase downloads its CLI binary.
+allowBuilds:
+  supabase: true
