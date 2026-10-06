@@ -5,6 +5,9 @@ packages:
 catalog:
   zod: 4.6.5
 
-# Packages allowed to run install scripts. supabase downloads its CLI binary.
+# Install scripts, reviewed per package. supabase: allowed (fetches its CLI binary).
+# esbuild (pulled in by the railway SDK): not needed, its binary comes from an optional
+# platform package, so its postinstall check is skipped.
 allowBuilds:
   supabase: true
+  esbuild: false
