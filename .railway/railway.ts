@@ -26,10 +26,18 @@ export default defineRailway((ctx, project) => {
   };
 
   const deployBase = {
-    region: "europe-west4-drams3a", // EU West, Amsterdam
     restartPolicyType: "ON_FAILURE" as const,
     restartPolicyMaxRetries: 10,
+    // Railway's free plan requires serverless (sleepApplication: true); deploys with false
+    // fail there. In practice our services never sleep: the worker polls the queue and
+    // both hold database connections, so they always have outbound traffic. Set to false
+    // after upgrading to a paid plan, before the pilot (docs/decisions.md).
+    sleepApplication: true,
   };
+
+  // Placement: one replica in EU West (Amsterdam), near Supabase Frankfurt. Railway places
+  // services by this map; the deploy.region field alone was ignored (they ran in sfo).
+  const regions = { "europe-west4-drams3a": 1 };
 
   const env = {
     NODE_ENV: "production",
@@ -44,6 +52,7 @@ export default defineRailway((ctx, project) => {
   const api = service("api", {
     source,
     build,
+    regions,
     deploy: {
       ...deployBase,
       startCommand: "node apps/api/src/server.ts",
@@ -58,6 +67,7 @@ export default defineRailway((ctx, project) => {
   const worker = service("worker", {
     source,
     build,
+    regions,
     deploy: { ...deployBase, startCommand: "node apps/api/src/worker.ts" },
     env: {
       ...env,
