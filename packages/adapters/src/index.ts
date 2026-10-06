@@ -1,3 +1,4 @@
+export * from "./postgres/connection.ts";
 export * from "./postgres/intake.ts";
 export * from "./postgres/messages.ts";
 export * from "./queues.ts";

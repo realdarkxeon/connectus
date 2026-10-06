@@ -1,19 +1,20 @@
-import { ensureQueues, PostgresInboundStore } from "@connectus/adapters";
+import { ensureQueues, PostgresInboundStore, postgresConnection } from "@connectus/adapters";
 import { serve } from "@hono/node-server";
 import { Bot } from "grammy";
 import pg from "pg";
 import { PgBoss } from "pg-boss";
 import { createApp } from "./app.ts";
-import { loadConfig, serverSchema } from "./config.ts";
+import { loadConfig, readCaCertificate, serverSchema, webhookUrl } from "./config.ts";
 import { log } from "./log.ts";
 import { telegramWebhook } from "./telegram-webhook.ts";
 
 const config = loadConfig(serverSchema, process.env);
 
-const pool = new pg.Pool({ connectionString: config.DATABASE_URL, max: 5 });
+const db = postgresConnection(config.DATABASE_URL, readCaCertificate(config.DATABASE_CA_CERT_PATH));
+const pool = new pg.Pool({ ...db, max: 5 });
 // Reception only sends jobs; the worker runs pg-boss maintenance.
 const boss = new PgBoss({
-  connectionString: config.DATABASE_URL,
+  ...db,
   max: 2,
   supervise: false,
   schedule: false,
@@ -29,6 +30,17 @@ const store = new PostgresInboundStore(pool, boss);
 const app = createApp({
   telegramWebhook: telegramWebhook(bot, store, config.TELEGRAM_WEBHOOK_SECRET),
 });
+
+// On staging/production, (re)register the webhook with the current address and secret.
+// Idempotent, so every deploy and every replica can do it.
+const url = webhookUrl(config);
+if (url) {
+  await bot.api.setWebhook(url, {
+    secret_token: config.TELEGRAM_WEBHOOK_SECRET,
+    allowed_updates: ["message"],
+  });
+  log.info("telegram webhook registered", { host: new URL(url).host });
+}
 
 const server = serve({ fetch: app.fetch, port: config.PORT }, (info) => {
   log.info("api listening", { port: info.port, env: config.APP_ENV });

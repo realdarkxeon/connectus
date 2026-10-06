@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/app.ts";
-import { loadConfig, serverSchema } from "../src/config.ts";
+import { loadConfig, serverSchema, webhookUrl } from "../src/config.ts";
 
 describe("reception app", () => {
   it("answers the health check", async () => {
@@ -39,5 +39,33 @@ describe("config", () => {
     expect(() => loadConfig(serverSchema, {})).toThrow(
       "DATABASE_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET",
     );
+  });
+});
+
+describe("webhookUrl", () => {
+  it("is not set when running locally, so a dev machine never steals the webhook", () => {
+    const config = loadConfig(serverSchema, { ...validEnv, PUBLIC_URL: "https://x.example" });
+    expect(webhookUrl(config)).toBeUndefined();
+  });
+
+  it("uses Railway's public domain on staging", () => {
+    const config = loadConfig(serverSchema, {
+      ...validEnv,
+      APP_ENV: "staging",
+      RAILWAY_PUBLIC_DOMAIN: "connectus-api-staging.up.railway.app",
+    });
+    expect(webhookUrl(config)).toBe(
+      "https://connectus-api-staging.up.railway.app/telegram/webhook",
+    );
+  });
+
+  it("prefers an explicit PUBLIC_URL", () => {
+    const config = loadConfig(serverSchema, {
+      ...validEnv,
+      APP_ENV: "production",
+      PUBLIC_URL: "https://bot.example.kz/",
+      RAILWAY_PUBLIC_DOMAIN: "ignored.up.railway.app",
+    });
+    expect(webhookUrl(config)).toBe("https://bot.example.kz/telegram/webhook");
   });
 });

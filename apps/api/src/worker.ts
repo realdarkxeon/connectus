@@ -3,6 +3,7 @@ import {
   type IngestJob,
   type MediaJob,
   PostgresMessageRepo,
+  postgresConnection,
   QUEUES,
   SupabaseMediaStorage,
   TelegramClient,
@@ -10,7 +11,7 @@ import {
 } from "@connectus/adapters";
 import pg from "pg";
 import { type Job, PgBoss } from "pg-boss";
-import { loadConfig, workerSchema } from "./config.ts";
+import { loadConfig, readCaCertificate, workerSchema } from "./config.ts";
 import { handleIngest } from "./jobs/ingest.ts";
 import { handleMedia } from "./jobs/media.ts";
 import { handleUnrouted } from "./jobs/unrouted.ts";
@@ -19,8 +20,9 @@ import { log } from "./log.ts";
 // The workshop: takes tickets from the queues and does the slow work.
 const config = loadConfig(workerSchema, process.env);
 
-const pool = new pg.Pool({ connectionString: config.DATABASE_URL, max: 5 });
-const boss = new PgBoss({ connectionString: config.DATABASE_URL, max: 3 });
+const db = postgresConnection(config.DATABASE_URL, readCaCertificate(config.DATABASE_CA_CERT_PATH));
+const pool = new pg.Pool({ ...db, max: 5 });
+const boss = new PgBoss({ ...db, max: 3 });
 boss.on("error", (error) => log.error("pg-boss error", { error: error.message }));
 await boss.start();
 await ensureQueues(boss);

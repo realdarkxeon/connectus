@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { z } from "zod";
 
 // All settings come from environment variables (hard rule 9). Each process validates
@@ -8,6 +9,9 @@ const base = {
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   APP_ENV: z.enum(["local", "staging", "production"]).default("local"),
   DATABASE_URL: z.string().startsWith("postgres"),
+  // Path to Supabase's CA certificate (public, committed in certs/). Set on Railway;
+  // unset locally. When set, the database connection uses verify-full.
+  DATABASE_CA_CERT_PATH: z.string().optional(),
 };
 
 const telegram = {
@@ -22,6 +26,9 @@ export const serverSchema = z.object({
   ...base,
   ...telegram,
   PORT: z.coerce.number().int().positive().default(3000),
+  // Public base URL of this service. On Railway it is derived from RAILWAY_PUBLIC_DOMAIN.
+  PUBLIC_URL: z.url().optional(),
+  RAILWAY_PUBLIC_DOMAIN: z.string().optional(),
 });
 export type ServerConfig = z.infer<typeof serverSchema>;
 
@@ -41,4 +48,17 @@ export function loadConfig<T extends z.ZodType>(schema: T, env: NodeJS.ProcessEn
     throw new Error(`Invalid or missing environment variables: ${names}`);
   }
   return parsed.data;
+}
+
+export function readCaCertificate(path: string | undefined): string | undefined {
+  return path ? readFileSync(path, "utf8") : undefined;
+}
+
+// Where Telegram should send updates, or undefined when running locally.
+export function webhookUrl(config: ServerConfig): string | undefined {
+  if (config.APP_ENV === "local") return undefined;
+  const base =
+    config.PUBLIC_URL ??
+    (config.RAILWAY_PUBLIC_DOMAIN ? `https://${config.RAILWAY_PUBLIC_DOMAIN}` : undefined);
+  return base ? `${base.replace(/\/$/, "")}/telegram/webhook` : undefined;
 }
