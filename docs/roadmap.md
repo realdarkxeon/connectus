@@ -17,14 +17,17 @@ Discovery track (Darkhan with owner) and build track run in parallel.
 
 - [ ] Step 0. Accounts: GitHub repo, Railway, Supabase (Frankfurt), Anthropic key with
       spend limit, 2 Telegram bots (staging, prod), Jev waitlist, Sentry
+      - Done: GitHub, Railway (free plan; upgrade before pilot), Supabase, staging bot.
+        Open: Anthropic key, prod bot, Jev waitlist, Sentry
 - [ ] Step 1. Owner interview, written consent, site + PM list, 3 pilot sites, chat exports requested
 - [x] Step 2. Foundation: pnpm monorepo, strict TS, Biome, Vitest, GitHub Actions CI,
       core Card schema + state machine with tests, migrations for full data model with RLS
       - [x] Part A: monorepo, tooling, CI, Card schema, state machine (2026-10-06)
       - [x] Part B: Supabase migrations with RLS + pgTAP tests (2026-10-06)
-- [ ] Step 3. Staging bot live: Hono, Telegram webhook (secret verified), idempotent
+- [x] Step 3. Staging bot live: Hono, Telegram webhook (secret verified), idempotent
       storage, media to Storage, `ingest` enqueued, reply "получено", deployed on Railway.
-      Done when a voice note appears in DB with its file in Storage
+      Done when a voice note appears in DB with its file in Storage (2026-10-06: real voice
+      note from Telegram stored on staging, 11.5 KB audio/ogg in the media bucket)
 - [ ] Step 4. PM interviews (1 per pilot site); anonymizer script; exports anonymized
 - [ ] Step 5. Golden set: 150 requests labelled by owner; type list + urgency rubric agreed
 - [ ] Step 6. Eval harness + experiments: STT benchmark, extraction prompt v1, Laya spike (1 day)

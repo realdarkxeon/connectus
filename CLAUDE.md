@@ -43,7 +43,12 @@ from `packageManager` in package.json via Corepack.
 - pnpm db:reset (rebuild local DB from migrations + seed)
 - pnpm test:db (pgTAP RLS and integrity tests) / pnpm lint:db
 - New migration: pnpm exec supabase migration new <name>
-- Not yet created: pnpm dev (Step 3), pnpm eval (Step 6)
+- pnpm dev (api + worker locally with ../../.env; APP_ENV=local never touches the webhook)
+- pnpm test:integration (needs pnpm db:start) / pnpm e2e:local (real api + worker,
+  local DB + Storage, fake Telegram)
+- Railway: railway config plan --out <file>, then railway config apply --plan <file> --yes
+  (the user runs apply). railway scale for region. Check real region/settings afterwards.
+- Not yet created: pnpm eval (Step 6)
 
 ## Hard rules
 1. Never lose a PM message. Any failure path ends in the owner seeing raw text, not silence.

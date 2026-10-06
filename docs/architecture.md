@@ -41,6 +41,11 @@ reference parents by (company_id, id), so no row can point at another company's 
 - OWNER_RULE(id, company_id, source_text, rule jsonb, active, confirmed_at)
 - EVENT(id bigint, company_id, request_id, type, payload jsonb, at) append-only, enforced by
   trigger for every role
+- MESSAGE.external_file_id: channel file id, kept until the file is copied to Storage
+- private.UNROUTED_MESSAGE(channel, external_message_id, external_user_id, sender_name, kind,
+  text, external_file_id, received_at, routed_message_id): waiting room for unknown senders.
+  Exception to "every table has company_id" (no company by definition): private schema,
+  RLS on, no client privileges
 - AI_CALL(id, company_id, request_id?, provider, model, purpose, latency_ms, tokens_in,
   tokens_out, cost_usd numeric, ok)
 Columns we filter on are real columns; type-specific details live in REQUEST.card.
@@ -59,7 +64,13 @@ Terminal: Done, Rejected, Merged, Discarded
 
 ## Pipeline (jobs)
 1. Webhook: verify (Telegram secret token header / WhatsApp signature), insert MESSAGE
-   (ignore duplicate), enqueue `ingest`.
+   (ignore duplicate) and enqueue `ingest` in ONE transaction. Telegram external id is
+   '<chat_id>:<message_id>' (message_id repeats across chats). Unknown sender: the message
+   goes to private.unrouted_message (waiting room) and an `unrouted` job sends a polite
+   "not connected" reply. No AI or Telegram calls in the request path.
+   Step 3 (built): `ingest` enqueues `media`, then replies "получено" to the PM's message;
+   `media` copies the file to the private `media` bucket at
+   <company>/<yyyy>/<mm>/<message>.<ext> and sets media_key once.
 2. `ingest`: attach to PM's open Draft or create one; set last_message_at; schedule
    `close_draft` in 120 s. Note: pg-boss sendDebounced defers into the next slot, it does
    not reset a timer, so use check-and-re-arm: on run, if last_message_at is newer than
@@ -105,8 +116,21 @@ URLs. Secrets in Railway env vars only.
 - Claude Code is denied reading `.env*` and `secrets/**` via `.claude/settings.json`.
 
 ## Deployment
-GitHub -> Railway. One Docker image, services `api` and `worker`.
-Environments: local (test bot + tunnel), staging (staging bot), production.
-Migrations run on deploy; failed migration aborts deploy.
+GitHub -> Railway. One Docker image, services `api` and `worker`, defined in
+`.railway/railway.ts` (Railway IaC). Environments: local (no real Telegram; `pnpm e2e:local`
+uses a fake Telegram), staging (staging bot), production.
+- Region: EU West, Amsterdam (`europe-west4-drams3a`). The IaC plan does not manage region
+  placement; it is set with `railway scale <region>=1 sfo=0`. After every Railway change,
+  verify the real region and settings from the deployment record, not the config file.
+- Migrations run on deploy: the api pre-deploy step runs `scripts/migrate.sh`
+  (`supabase db push`, CLI baked into the image); a failed migration aborts the deploy.
+- Database TLS is verify-full against Supabase's root CA (`certs/supabase-ca.crt`).
+- The api registers the Telegram webhook (address + secret) at startup on staging and
+  production; never locally.
+- Change flow: edit `.railway/railway.ts`, `railway config plan --out <file>`, review,
+  `railway config apply --plan <file> --yes`.
+- Railway free plan requires serverless (app sleeping on). Our services never actually
+  sleep (DB polling keeps outbound traffic), but the $1 monthly credit can run out and
+  stop them. Upgrade to a paid plan and set sleepApplication false before the pilot.
 Later: move to a Kazakhstan cloud before paid contracts (personal data localization);
 legal review needed for cross-border AI processing.
