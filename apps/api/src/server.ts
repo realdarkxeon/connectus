@@ -22,7 +22,7 @@ boss.on("error", (error) => log.error("pg-boss error", { error: error.message })
 await boss.start();
 await ensureQueues(boss);
 
-const bot = new Bot(config.TELEGRAM_BOT_TOKEN);
+const bot = new Bot(config.TELEGRAM_BOT_TOKEN, { client: { apiRoot: config.TELEGRAM_API_ROOT } });
 await bot.init(); // one getMe call; grammY needs the bot's own info to handle updates
 
 const store = new PostgresInboundStore(pool, boss);

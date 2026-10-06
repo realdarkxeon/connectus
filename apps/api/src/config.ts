@@ -14,6 +14,8 @@ const telegram = {
   TELEGRAM_BOT_TOKEN: z.string().regex(/^\d+:[\w-]+$/),
   // Telegram allows 1-256 chars of A-Z, a-z, 0-9, _ and -. We require at least 32.
   TELEGRAM_WEBHOOK_SECRET: z.string().regex(/^[\w-]{32,256}$/),
+  // Only the local end-to-end check changes this, to point at a fake Telegram.
+  TELEGRAM_API_ROOT: z.url().default("https://api.telegram.org"),
 };
 
 export const serverSchema = z.object({
@@ -26,6 +28,9 @@ export type ServerConfig = z.infer<typeof serverSchema>;
 export const workerSchema = z.object({
   ...base,
   ...telegram,
+  SUPABASE_URL: z.url(),
+  // Server only: bypasses RLS. Never in the Mini App or any client.
+  SUPABASE_SECRET_KEY: z.string().min(20),
 });
 export type WorkerConfig = z.infer<typeof workerSchema>;
 
