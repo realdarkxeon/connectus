@@ -7,7 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm -r typecheck && tsc -p .railway",
     "lint": "biome ci .",
     "format": "biome check --write .",
     "test": "vitest run --project unit",
@@ -23,6 +23,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
     "@types/node": "24.19.1",
+    "railway": "3.12.0",
     "supabase": "2.119.0",
     "typescript": "7.0.2",
     "vite": "8.3.2",
