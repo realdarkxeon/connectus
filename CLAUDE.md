@@ -68,6 +68,8 @@ from `packageManager` in package.json via Corepack.
 11. Owner voice replies are delivered as original audio + verbatim transcript. No AI rewrite.
 
 ## How we work
+- Follow docs/learning/METHOD.md (build-and-learn loop: homework check, plain plan, lesson
+  before building, small pieces, proof, glossary + homework + NEXT-SESSION.md at the end).
 - Plan before code. For each step: what, why, done-when, files touched. Wait for approval
   on anything that changes the data model, a hard rule, or a locked decision.
 - Small vertical slices. Each ends green: typecheck, lint, test all pass before "done".
