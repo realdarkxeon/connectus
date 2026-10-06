@@ -10,6 +10,8 @@ import { ensureQueues, QUEUES } from "../../src/queues.ts";
 const url =
   process.env.TEST_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
 
+const TEST_SCHEMA = "pgboss_test";
+
 let pool: pg.Pool;
 let boss: PgBoss;
 let store: PostgresInboundStore;
@@ -34,7 +36,7 @@ function inbound(overrides: Partial<InboundMessage> = {}): InboundMessage {
 
 async function jobsFor(queue: string, key: string, id: string): Promise<number> {
   const res = await pool.query<{ n: string }>(
-    "select count(*) as n from pgboss.job where name = $1 and data ->> $2 = $3",
+    `select count(*) as n from ${TEST_SCHEMA}.job where name = $1 and data ->> $2 = $3`,
     [queue, key, id],
   );
   return Number(res.rows[0]?.n);
@@ -50,7 +52,14 @@ async function messageCount(externalMessageId: string): Promise<number> {
 
 beforeAll(async () => {
   pool = new pg.Pool({ connectionString: url, max: 3 });
-  boss = new PgBoss({ connectionString: url, max: 2, supervise: false, schedule: false });
+  // A separate pg-boss schema, so test tickets never reach a real worker on this database.
+  boss = new PgBoss({
+    connectionString: url,
+    schema: TEST_SCHEMA,
+    max: 2,
+    supervise: false,
+    schedule: false,
+  });
   await boss.start();
   await ensureQueues(boss);
   store = new PostgresInboundStore(pool, boss);

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@connectus/core": "workspace:*",
+    "@supabase/supabase-js": "2.117.2",
     "grammy": "1.46.0",
     "pg": "8.23.1",
     "pg-boss": "12.36.0"
