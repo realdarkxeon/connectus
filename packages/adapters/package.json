@@ -9,11 +9,13 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "0.132.0",
     "@connectus/core": "workspace:*",
     "@supabase/supabase-js": "2.117.2",
     "grammy": "1.46.0",
     "pg": "8.23.1",
-    "pg-boss": "12.36.0"
+    "pg-boss": "12.36.0",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/pg": "8.23.1"
