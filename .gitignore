@@ -12,6 +12,9 @@ coverage/
 .env.*
 !.env.example
 
+# Discovery data: raw chat exports and the name -> label key (personal data)
+discovery-data/
+
 # Logs
 *.log
 
