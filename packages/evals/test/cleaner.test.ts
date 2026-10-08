@@ -122,6 +122,12 @@ describe("cleaner: reports for human review", () => {
     expect(cleaner.clean("Серик")).toBe("PERSON_2");
   });
 
+  it("joins a sender to the one listed person they match, ignoring extra words", () => {
+    const cleaner = createCleaner({ people: [{ names: ["Серик", "Ахметов"] }] });
+    expect(cleaner.addPerson(["Прораб", "Серик"])).toBe("PERSON_1");
+    expect(cleaner.clean("прораб на месте")).toBe("прораб на месте");
+  });
+
   it("keeps the label key separate from the cleaned text", () => {
     const cleaner = createCleaner({ people: [{ names: ["Айбек"] }] });
     expect(cleaner.mapping()).toEqual({ PERSON_1: ["Айбек"] });

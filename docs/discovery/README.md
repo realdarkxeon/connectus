@@ -43,6 +43,24 @@ is not legal advice: confirm the consent wording with a lawyer before the pilot.
   → **Without media**. You get a `.txt` file. (The cleaner reads Telegram first; WhatsApp is
   added once we see a real export, because its text format differs by phone and language.)
 
+## How to clean exports (`pnpm anonymize`)
+
+1. Copy `docs/discovery/people.example.json` to `discovery-data/people.json` and fill it in
+   from the interviews: every PM, foreman, supplier contact, the owner; companies; sites.
+   List full names and nicknames (e.g. "Секе" for Серик). Russian case endings are
+   handled automatically. For names that are also words (Алмаз, Болат) add
+   `"onlyCapitalized": true`.
+2. Put each Telegram export folder (with its `result.json`) into `discovery-data/raw/`.
+3. Run `pnpm anonymize` **in a normal terminal**. It prints counts only.
+4. Open `discovery-data/review.md` in your editor (never paste it into chat):
+   - *Replacements:* every replaced form. An ordinary word there? Fix `people.json`.
+   - *Suspects:* capitalized words left as they were. A name? Add it to `people.json`.
+     Not a name? Add it to `keepWords`.
+5. Repeat 3-4 until both lists look right. Only then may `discovery-data/clean/` be shared.
+
+Limit: a name that is **not** in `people.json` and is typed in lowercase ("нурлан привёз")
+is neither replaced nor listed as a suspect. A complete people list is the protection.
+
 ## Where raw data lives
 
 - Raw exports go only into `discovery-data/raw/` in this repo folder. That folder is

@@ -18,7 +18,8 @@
     "lint:db": "supabase db lint --fail-on error",
     "dev": "pnpm --filter @connectus/api --parallel run \"/^dev/\"",
     "test:integration": "vitest run --project integration",
-    "e2e:local": "node apps/api/scripts/e2e-local.ts"
+    "e2e:local": "node apps/api/scripts/e2e-local.ts",
+    "anonymize": "node packages/evals/src/anonymize/cli.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

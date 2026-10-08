@@ -46,6 +46,7 @@ from `packageManager` in package.json via Corepack.
 - pnpm dev (api + worker locally with ../../.env; APP_ENV=local never touches the webhook)
 - pnpm test:integration (needs pnpm db:start) / pnpm e2e:local (real api + worker,
   local DB + Storage, fake Telegram)
+- pnpm anonymize (clean Telegram exports in discovery-data/; see docs/discovery/README.md)
 - Railway: railway config plan --out <file>, then railway config apply --plan <file> --yes
   (the user runs apply). railway scale for region. Check real region/settings afterwards.
 - Not yet created: pnpm eval (Step 6)

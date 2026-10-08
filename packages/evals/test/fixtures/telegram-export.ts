@@ -1,0 +1,52 @@
+// Shaped like Telegram Desktop's result.json. All names and numbers are made up.
+export const fakeExport = {
+  name: "Серик Ахметов",
+  type: "personal_chat",
+  id: 401,
+  messages: [
+    { id: 1, type: "service", date_unixtime: "1791436000", action: "phone_call", text: "" },
+    {
+      id: 2,
+      type: "message",
+      date: "2026-10-08T09:00:00",
+      date_unixtime: "1791435600",
+      from: "Серик Ахметов",
+      from_id: "user111",
+      text: "Бетон М300 не привезли, Айбеку звонил",
+    },
+    {
+      id: 3,
+      type: "message",
+      date_unixtime: "1791435700",
+      from: "Прораб Серик",
+      from_id: "user111",
+      reply_to_message_id: 2,
+      text: [
+        "Номер ",
+        { type: "phone", text: "+7 701 555 12 34" },
+        ", просит 380 тыс, пишите ",
+        { type: "mention", text: "@aibek_snab" },
+      ],
+    },
+    {
+      id: 4,
+      type: "message",
+      date_unixtime: "1791435800",
+      from: "Айбек Сапаров",
+      from_id: "user222",
+      forwarded_from: "Нурлан Касымов",
+      media_type: "voice_message",
+      file: "voice_messages/audio_1.ogg",
+      text: "",
+    },
+    {
+      id: 5,
+      type: "message",
+      date_unixtime: "1791435900",
+      from: "Серик Ахметов",
+      from_id: "user111",
+      photo: "photos/photo_1.jpg",
+      text: "Захватка 3",
+    },
+  ],
+};

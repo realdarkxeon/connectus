@@ -22,8 +22,9 @@ export type Suspect = { word: string; count: number };
 
 export type Cleaner = {
   clean(text: string): string;
-  // Registers a sender (names from their display name) and returns their label. Joins an
-  // existing person only when every given name belongs to that one person.
+  // Registers a sender (words of their display name) and returns their label. If the words
+  // match exactly one listed person, the sender is that person ("Прораб Серик" -> Серик) and
+  // the other words are not added. Otherwise the sender becomes a new person.
   addPerson(names: string[]): string;
   report(): { replacements: Replacement[]; suspects: Suspect[] };
   // The name -> label key. Personal data: it stays in discovery-data/, never shared.
@@ -155,14 +156,7 @@ export function createCleaner(config: CleanerConfig): Cleaner {
       const wanted = names.map((n) => n.trim()).filter((n) => n.length >= 2);
       const lower = wanted.map((n) => n.toLowerCase());
       const owners = people.filter((p) => p.forms.some((f) => lower.includes(f.toLowerCase())));
-      const only = owners[0];
-      if (
-        owners.length === 1 &&
-        only &&
-        lower.every((n) => only.forms.some((f) => f.toLowerCase() === n))
-      ) {
-        return only.label;
-      }
+      if (owners.length === 1 && owners[0]) return owners[0].label;
       const label = `PERSON_${people.length + 1}`;
       people.push({ label, forms: wanted, ignoreCase: true });
       compiled = null;
