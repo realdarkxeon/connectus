@@ -1,0 +1,615 @@
+{
+  "set": {
+    "name": "practice",
+    "version": 1
+  },
+  "model": "claude-haiku-4-5",
+  "promptVersion": "extract.v1",
+  "cases": [
+    {
+      "id": "p01-rebar",
+      "result": {
+        "id": "p01-rebar",
+        "validCard": true,
+        "checks": {
+          "type": true,
+          "amount": true,
+          "deadline": true,
+          "workStopped": true,
+          "missing": false
+        },
+        "inventedAmount": false,
+        "expectedSafety": false,
+        "predictedSafety": false
+      },
+      "card": {
+        "type": "spend_approval",
+        "siteHint": "ЖК Алтын",
+        "summary": "Закупка 2 тонн арматуры Ø12 для захватки 3, стоимость 380 тыс тенге",
+        "ask": "Одобрить закупку арматуры 2 тонны Ø12 у поставщика COMPANY_1 за 380 тыс тенге?",
+        "options": ["Одобрить", "Отклонить", "Уточнить цену", "Найти альтернативу"],
+        "amountKzt": 380000,
+        "delayDays": null,
+        "decideBy": "2026-10-09T12:00:00+05:00",
+        "workStopped": null,
+        "details": {
+          "количество": "2 тонны",
+          "диаметр": "Ø12",
+          "участок": "захватка 3",
+          "поставщик": "COMPANY_1"
+        },
+        "missing": [
+          {
+            "field": "reason",
+            "questionToPm": "Почему не хватило арматуры в смете захватки 3?"
+          }
+        ]
+      },
+      "failure": null,
+      "repaired": false,
+      "call": {
+        "model": "claude-haiku-4-5",
+        "promptVersion": "extract.v1",
+        "attempts": 1,
+        "latencyMs": 4374,
+        "inputTokens": 2036,
+        "outputTokens": 287,
+        "costUsd": 0.003471
+      }
+    },
+    {
+      "id": "p02-fall",
+      "result": {
+        "id": "p02-fall",
+        "validCard": true,
+        "checks": {
+          "type": true,
+          "amount": true,
+          "deadline": true,
+          "workStopped": true,
+          "missing": false
+        },
+        "inventedAmount": false,
+        "expectedSafety": true,
+        "predictedSafety": true
+      },
+      "card": {
+        "type": "safety_incident",
+        "siteHint": "ЖК Алтын",
+        "summary": "Рабочий упал с лесов на 2 этаже, скорая едет, работы остановлены",
+        "ask": "Как действовать дальше? Продолжить работы после осмотра или ждать инструкций?",
+        "options": [
+          "Возобновить работы после проверки безопасности",
+          "Остановить все работы на объекте до разбирательства",
+          "Ждать инструкций от руководства",
+          "Продолжить на других участках"
+        ],
+        "amountKzt": null,
+        "delayDays": null,
+        "decideBy": null,
+        "workStopped": true,
+        "details": {
+          "место": "лесы на 2 этаже",
+          "участок": "фасад",
+          "действие": "скорая едет"
+        },
+        "missing": [
+          {
+            "field": "anyoneHurt",
+            "questionToPm": "Рабочий в сознании? Есть видимые травмы?"
+          }
+        ]
+      },
+      "failure": null,
+      "repaired": false,
+      "call": {
+        "model": "claude-haiku-4-5",
+        "promptVersion": "extract.v1",
+        "attempts": 1,
+        "latencyMs": 3883,
+        "inputTokens": 2009,
+        "outputTokens": 266,
+        "costUsd": 0.003339
+      }
+    },
+    {
+      "id": "p03-scaffold",
+      "result": {
+        "id": "p03-scaffold",
+        "validCard": true,
+        "checks": {
+          "type": true,
+          "amount": true,
+          "deadline": false,
+          "workStopped": true,
+          "missing": false
+        },
+        "inventedAmount": false,
+        "expectedSafety": true,
+        "predictedSafety": true
+      },
+      "card": {
+        "type": "safety_incident",
+        "siteHint": "ЖК Самал",
+        "summary": "Леса на секции Б шатаются, крепления ржавые",
+        "ask": "Остановить работы до проверки лесов?",
+        "options": [
+          "Остановить работы",
+          "Продолжить с усиленным контролем",
+          "Заменить крепления",
+          "Эвакуировать секцию"
+        ],
+        "amountKzt": null,
+        "delayDays": null,
+        "decideBy": "2026-10-08T10:30:00+05:00",
+        "workStopped": false,
+        "details": {
+          "объект": "ЖК Самал",
+          "участок": "фасад",
+          "секция": "Б",
+          "проблема": "шатающиеся леса, ржавые крепления"
+        },
+        "missing": [
+          {
+            "field": "workStopped",
+            "questionToPm": "Остановили ли вы работы на секции Б?"
+          },
+          {
+            "field": "anyoneHurt",
+            "questionToPm": "Кто-нибудь получил травму?"
+          }
+        ]
+      },
+      "failure": null,
+      "repaired": false,
+      "call": {
+        "model": "claude-haiku-4-5",
+        "promptVersion": "extract.v1",
+        "attempts": 1,
+        "latencyMs": 4042,
+        "inputTokens": 2010,
+        "outputTokens": 280,
+        "costUsd": 0.00341
+      }
+    },
+    {
+      "id": "p04-facade-delay",
+      "result": {
+        "id": "p04-facade-delay",
+        "validCard": true,
+        "checks": {
+          "type": true,
+          "amount": true,
+          "deadline": false,
+          "workStopped": true,
+          "missing": false
+        },
+        "inventedAmount": false,
+        "expectedSafety": false,
+        "predictedSafety": false
+      },
+      "card": {
+        "type": "schedule_change",
+        "siteHint": "ЖК Самал",
+        "summary": "Фасадчики просят перенести сдачу секции А с 15 на 22 октября из-за дождей",
+        "ask": "Перенести срок сдачи секции А фасада на 22 октября?",
+        "options": ["Согласен на 22 октября", "Нужен другой срок", "Требуется уточнение причин"],
+        "amountKzt": null,
+        "delayDays": 7,
+        "decideBy": "2026-10-15T10:00:00+05:00",
+        "workStopped": null,
+        "details": {
+          "участок": "секция А",
+          "текущий срок": "15 октября",
+          "причина задержки": "дожди"
+        },
+        "missing": [
+          {
+            "field": "cause",
+            "questionToPm": "Какие участки фасада не готовы к 15 октября?"
+          }
+        ]
+      },
+      "failure": null,
+      "repaired": false,
+      "call": {
+        "model": "claude-haiku-4-5",
+        "promptVersion": "extract.v1",
+        "attempts": 1,
+        "latencyMs": 3667,
+        "inputTokens": 2016,
+        "outputTokens": 245,
+        "costUsd": 0.003241
+      }
+    },
+    {
+      "id": "p05-insulation-no-amount",
+      "result": {
+        "id": "p05-insulation-no-amount",
+        "validCard": true,
+        "checks": {
+          "type": true,
+          "amount": true,
+          "deadline": true,
+          "workStopped": true,
+          "missing": false
+        },
+        "inventedAmount": false,
+        "expectedSafety": false,
+        "predictedSafety": false
+      },
+      "card": {
+        "type": "spend_approval",
+        "siteHint": "ЖК Алтын",
+        "summary": "需要购买屋顶保温材料，最后一段不足",
+        "ask": "Одобрить покупку утеплителя для кровли?",
+        "options": ["Одобрить", "Отклонить", "Уточнить количество", "Предложить альтернативу"],
+        "amountKzt": null,
+        "delayDays": null,
+        "decideBy": null,
+        "workStopped": null,
+        "details": {
+          "участок": "кровля",
+          "материал": "утеплитель",
+          "проблема": "не хватает на последнюю секцию"
+        },
+        "missing": [
+          {
+            "field": "amountKzt",
+            "questionToPm": "Сколько стоит утеплитель для последней секции?"
+          },
+          {
+            "field": "reason",
+            "questionToPm": "Почему не хватило при первоначальной смете?"
+          }
+        ]
+      },
+      "failure": null,
+      "repaired": false,
+      "call": {
+        "model": "claude-haiku-4-5",
+        "promptVersion": "extract.v1",
+        "attempts": 1,
+        "latencyMs": 4002,
+        "inputTokens": 2005,
+        "outputTokens": 245,
+        "costUsd": 0.00323
+      }
+    },
+    {
+      "id": "p06-pour-done",
+      "result": {
+        "id": "p06-pour-done",
+        "validCard": true,
+        "checks": {
+          "type": true,
+          "amount": true,
+          "deadline": true,
+          "workStopped": false,
+          "missing": true
+        },
+        "inventedAmount": false,
+        "expectedSafety": false,
+        "predictedSafety": false
+      },
+      "card": {
+        "type": "info_report",
+        "siteHint": "ЖК Алтын",
+        "summary": "Залили перекрытие 5 этажа по плану",
+        "ask": null,
+        "options": [],
+        "amountKzt": null,
+        "delayDays": null,
+        "decideBy": null,
+        "workStopped": false,
+        "details": {},
+        "missing": []
+      },
+      "failure": null,
+      "repaired": false,
+      "call": {
+        "model": "claude-haiku-4-5",
+        "promptVersion": "extract.v1",
+        "attempts": 1,
+        "latencyMs": 2095,
+        "inputTokens": 1999,
+        "outputTokens": 87,
+        "costUsd": 0.002434
+      }
+    },
+    {
+      "id": "p07-mesh-not-delivered",
+      "result": {
+        "id": "p07-mesh-not-delivered",
+        "validCard": true,
+        "checks": {
+          "type": true,
+          "amount": true,
+          "deadline": true,
+          "workStopped": true,
+          "missing": false
+        },
+        "inventedAmount": false,
+        "expectedSafety": false,
+        "predictedSafety": false
+      },
+      "card": {
+        "type": "supply_problem",
+        "siteHint": "ЖК Самал",
+        "summary": "Компания COMPANY_1 не доставила сетку, бригада простаивает",
+        "ask": "Свяжитесь с поставщиком для срочной доставки?",
+        "options": [
+          "Требовать доставку сегодня",
+          "Перенести работы на завтра",
+          "Закупить у другого поставщика",
+          "Продолжить другие работы"
+        ],
+        "amountKzt": null,
+        "delayDays": null,
+        "decideBy": null,
+        "workStopped": true,
+        "details": {
+          "поставщик": "COMPANY_1",
+          "материал": "сетка",
+          "участок": "монолит"
+        },
+        "missing": [
+          {
+            "field": "reason",
+            "questionToPm": "Это повторный случай? Какой срок доставки был?"
+          }
+        ]
+      },
+      "failure": null,
+      "repaired": false,
+      "call": {
+        "model": "claude-haiku-4-5",
+        "promptVersion": "extract.v1",
+        "attempts": 1,
+        "latencyMs": 3726,
+        "inputTokens": 1999,
+        "outputTokens": 226,
+        "costUsd": 0.003129
+      }
+    },
+    {
+      "id": "p08-screed-cracks",
+      "result": {
+        "id": "p08-screed-cracks",
+        "validCard": true,
+        "checks": {
+          "type": true,
+          "amount": true,
+          "deadline": true,
+          "workStopped": true,
+          "missing": false
+        },
+        "inventedAmount": false,
+        "expectedSafety": false,
+        "predictedSafety": false
+      },
+      "card": {
+        "type": "quality_defect",
+        "siteHint": "ЖК Алтын",
+        "summary": "На 3 этаже трещины в стяжке, требуется переделка",
+        "ask": "Одобрить переделку стяжки на 3 этаже за 1,2 млн тенге?",
+        "options": ["Одобрить", "Отклонить", "Нужна смета", "Проверить на месте"],
+        "amountKzt": 1200000,
+        "delayDays": null,
+        "decideBy": null,
+        "workStopped": null,
+        "details": {
+          "этаж": "3",
+          "работа": "переделка стяжки"
+        },
+        "missing": [
+          {
+            "field": "reason",
+            "questionToPm": "Почему появились трещины в стяжке?"
+          },
+          {
+            "field": "newDate",
+            "questionToPm": "Когда планируете переделать стяжку?"
+          }
+        ]
+      },
+      "failure": null,
+      "repaired": false,
+      "call": {
+        "model": "claude-haiku-4-5",
+        "promptVersion": "extract.v1",
+        "attempts": 1,
+        "latencyMs": 3447,
+        "inputTokens": 2008,
+        "outputTokens": 231,
+        "costUsd": 0.003163
+      }
+    },
+    {
+      "id": "p09-windows-voice",
+      "result": {
+        "id": "p09-windows-voice",
+        "validCard": true,
+        "checks": {
+          "type": true,
+          "amount": true,
+          "deadline": true,
+          "workStopped": true,
+          "missing": false
+        },
+        "inventedAmount": false,
+        "expectedSafety": false,
+        "predictedSafety": false
+      },
+      "card": {
+        "type": "spend_approval",
+        "siteHint": "ЖК Самал",
+        "summary": "Поставщик окон требует 50% предоплаты для запуска производства",
+        "ask": "Одобрить предоплату 1 800 000 тенге поставщику окон?",
+        "options": ["Одобрить", "Отклонить", "Уточнить условия", "Предложить альтернативу"],
+        "amountKzt": 1800000,
+        "delayDays": null,
+        "decideBy": "2026-10-08T18:00:00+05:00",
+        "workStopped": null,
+        "details": {
+          "work_package": "окна",
+          "prepayment_percent": "50%",
+          "supplier_request": "предоплата для запуска производства"
+        },
+        "missing": [
+          {
+            "field": "reason",
+            "questionToPm": "Какой поставщик и когда будет готово производство?"
+          }
+        ]
+      },
+      "failure": null,
+      "repaired": false,
+      "call": {
+        "model": "claude-haiku-4-5",
+        "promptVersion": "extract.v1",
+        "attempts": 1,
+        "latencyMs": 3865,
+        "inputTokens": 2056,
+        "outputTokens": 239,
+        "costUsd": 0.003251
+      }
+    },
+    {
+      "id": "p10-headcount-not-money",
+      "result": {
+        "id": "p10-headcount-not-money",
+        "validCard": true,
+        "checks": {
+          "type": true,
+          "amount": true,
+          "deadline": true,
+          "workStopped": false,
+          "missing": true
+        },
+        "inventedAmount": false,
+        "expectedSafety": false,
+        "predictedSafety": false
+      },
+      "card": {
+        "type": "info_report",
+        "siteHint": "ЖК Алтын",
+        "summary": "На смену 12 человек, кран работает, бетон М300 ожидается к 14:00",
+        "ask": null,
+        "options": [],
+        "amountKzt": null,
+        "delayDays": null,
+        "decideBy": null,
+        "workStopped": false,
+        "details": {
+          "Количество рабочих": "12",
+          "Оборудование": "кран работает",
+          "Материал": "бетон М300",
+          "Ожидаемое время доставки": "14:00"
+        },
+        "missing": []
+      },
+      "failure": null,
+      "repaired": false,
+      "call": {
+        "model": "claude-haiku-4-5",
+        "promptVersion": "extract.v1",
+        "attempts": 1,
+        "latencyMs": 3155,
+        "inputTokens": 2006,
+        "outputTokens": 166,
+        "costUsd": 0.002836
+      }
+    },
+    {
+      "id": "p11-welders",
+      "result": {
+        "id": "p11-welders",
+        "validCard": true,
+        "checks": {
+          "type": true,
+          "amount": true,
+          "deadline": false,
+          "workStopped": true,
+          "missing": false
+        },
+        "inventedAmount": false,
+        "expectedSafety": false,
+        "predictedSafety": false
+      },
+      "card": {
+        "type": "staffing",
+        "siteHint": "ЖК Самал",
+        "summary": "Не хватает 3 сварщиков с понедельника для работ по каркасу",
+        "ask": "Одобрить привлечение 3 сварщиков с понедельника?",
+        "options": ["Одобрить", "Отклонить", "Обсудить сроки", "Предложить альтернативу"],
+        "amountKzt": null,
+        "delayDays": null,
+        "decideBy": "2026-10-10T23:59:59+05:00",
+        "workStopped": null,
+        "details": {
+          "участок": "металлоконструкции",
+          "требуемое количество": "3 человека",
+          "начало работы": "понедельник, 2026-10-13"
+        },
+        "missing": [
+          {
+            "field": "headcount",
+            "questionToPm": "Сколько сварщиков сейчас на объекте?"
+          },
+          {
+            "field": "urgency",
+            "questionToPm": "На сколько дней сдвинется график без них?"
+          }
+        ]
+      },
+      "failure": null,
+      "repaired": false,
+      "call": {
+        "model": "claude-haiku-4-5",
+        "promptVersion": "extract.v1",
+        "attempts": 1,
+        "latencyMs": 4091,
+        "inputTokens": 2021,
+        "outputTokens": 276,
+        "costUsd": 0.003401
+      }
+    }
+  ],
+  "summary": {
+    "rows": {
+      "type": {
+        "passed": 11,
+        "total": 11
+      },
+      "amount": {
+        "passed": 11,
+        "total": 11
+      },
+      "deadline": {
+        "passed": 8,
+        "total": 11
+      },
+      "workStopped": {
+        "passed": 9,
+        "total": 11
+      },
+      "missing": {
+        "passed": 2,
+        "total": 11
+      }
+    },
+    "safety": {
+      "caught": 2,
+      "total": 2,
+      "falseAlarms": 0,
+      "missedIds": []
+    },
+    "inventedAmounts": [],
+    "invalidCards": [],
+    "passed": true
+  },
+  "notRun": [],
+  "costUsd": 0.034905,
+  "avgLatencyMs": 3668
+}

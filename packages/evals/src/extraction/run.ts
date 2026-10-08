@@ -1,10 +1,13 @@
-import type { AiCallRecord, CardExtractor, ExtractionFailure } from "@connectus/core";
+import type { AiCallRecord, Card, CardExtractor, ExtractionFailure } from "@connectus/core";
 import type { EvalSet } from "./dataset.ts";
 import { type CaseResult, type Summary, scoreCase, summarize } from "./score.ts";
 
 export type CaseRecord = {
   id: string;
   result: CaseResult;
+  // What the model answered, kept so wrong checks can be read case by case. Eval sets hold
+  // only made-up or anonymized text.
+  card: Card | null;
   failure: ExtractionFailure | null;
   repaired: boolean;
   call: AiCallRecord;
@@ -48,6 +51,7 @@ export async function runEval(
     cases.push({
       id: c.id,
       result: scoreCase(c.id, c.expected, out.result.ok ? out.result.value : null),
+      card: out.result.ok ? out.result.value : null,
       failure: out.result.ok ? null : out.result.error,
       repaired: out.repaired,
       call: out.call,
