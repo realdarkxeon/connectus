@@ -47,6 +47,11 @@ export function anthropicCall(client: Anthropic): CallModel {
     );
 }
 
+// The real extractor. The SDK reads ANTHROPIC_API_KEY from the environment.
+export function createAnthropicExtractor(model: string, timeoutMs = 30_000): CardExtractor {
+  return createClaudeExtractor({ call: anthropicCall(new Anthropic()), model, timeoutMs });
+}
+
 export type ClaudeExtractorOptions = { call: CallModel; model: string; timeoutMs: number };
 
 export function createClaudeExtractor(options: ClaudeExtractorOptions): CardExtractor {
@@ -130,9 +135,15 @@ function retryNote(issues: CardIssue[]): string {
 
 function failureFrom(error: unknown): ExtractionFailure {
   if (error instanceof Anthropic.APIConnectionTimeoutError) return { kind: "timeout" };
-  if (error instanceof Anthropic.APIError)
-    return { kind: "api_error", status: error.status ?? null };
-  return { kind: "api_error", status: null };
+  if (error instanceof Anthropic.APIError) {
+    // The body's own message ("Your credit balance is too low..."), without the request id,
+    // so the same problem groups into one line in reports.
+    const body = z.object({ error: z.object({ message: z.string() }) }).safeParse(error.error);
+    const message = (body.success ? body.data.error.message : error.message).slice(0, 300);
+    return { kind: "api_error", status: error.status ?? null, message };
+  }
+  const message = error instanceof Error ? error.message.slice(0, 300) : null;
+  return { kind: "api_error", status: null, message };
 }
 
 // PM text goes inside <messages>; angle brackets in it are swapped for look-alikes so a

@@ -152,10 +152,18 @@ describe("Claude card extractor", () => {
   });
 
   it("reports an API error with its status", async () => {
-    const error = Anthropic.APIError.generate(529, { type: "error" }, "overloaded", new Headers());
+    const error = Anthropic.APIError.generate(
+      529,
+      { type: "error", error: { type: "overloaded_error", message: "Overloaded" } },
+      undefined,
+      new Headers(),
+    );
     const { call } = fakeModel(error);
     const out = await extractor(call).extract(input);
-    expect(out.result).toEqual({ ok: false, error: { kind: "api_error", status: 529 } });
+    expect(out.result).toMatchObject({
+      ok: false,
+      error: { kind: "api_error", status: 529, message: "Overloaded" },
+    });
   });
 });
 

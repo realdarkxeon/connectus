@@ -44,7 +44,8 @@ export type ExtractionFailure =
   | { kind: "refusal" }
   | { kind: "truncated" }
   | { kind: "timeout" }
-  | { kind: "api_error"; status: number | null };
+  // message: the provider's own error text (e.g. "credit balance is too low"), never PM text.
+  | { kind: "api_error"; status: number | null; message: string | null };
 
 export type Extraction = {
   result: Result<Card, ExtractionFailure>;

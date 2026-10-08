@@ -9,6 +9,7 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
+    "@connectus/adapters": "workspace:*",
     "@connectus/core": "workspace:*",
     "zod": "catalog:"
   }

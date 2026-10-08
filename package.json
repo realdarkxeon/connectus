@@ -19,7 +19,8 @@
     "dev": "pnpm --filter @connectus/api --parallel run \"/^dev/\"",
     "test:integration": "vitest run --project integration",
     "e2e:local": "node apps/api/scripts/e2e-local.ts",
-    "anonymize": "node packages/evals/src/anonymize/cli.ts"
+    "anonymize": "node packages/evals/src/anonymize/cli.ts",
+    "eval": "node --env-file-if-exists=.env packages/evals/src/extraction/cli.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

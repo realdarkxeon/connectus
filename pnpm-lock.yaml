@@ -264,6 +264,9 @@ importers:
 
   packages/evals:
     dependencies:
+      '@connectus/adapters':
+        specifier: workspace:*
+        version: link:../adapters
       '@connectus/core':
         specifier: workspace:*
         version: link:../core

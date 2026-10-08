@@ -49,7 +49,8 @@ from `packageManager` in package.json via Corepack.
 - pnpm anonymize (clean Telegram exports in discovery-data/; see docs/discovery/README.md)
 - Railway: railway config plan --out <file>, then railway config apply --plan <file> --yes
   (the user runs apply). railway scale for region. Check real region/settings afterwards.
-- Not yet created: pnpm eval (Step 6)
+- pnpm eval [--set <file>] [--model <id>] [--budget <usd>] (extraction eval, default practice
+  set, Haiku 4.5, $0.50 cap; reads ANTHROPIC_API_KEY from .env; saves runs to packages/evals/runs)
 
 ## Hard rules
 1. Never lose a PM message. Any failure path ends in the owner seeing raw text, not silence.
