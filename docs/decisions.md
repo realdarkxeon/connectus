@@ -39,3 +39,5 @@ Format: date, decision, why, status. Newest at the bottom. Reversals get a new e
 - 2026-10-06: pnpm minimum release age is respected: no exclusions; pin an older version instead (pg-boss 12.36.0). Install scripts are reviewed per package in allowBuilds (supabase true, esbuild false). Locked
 - 2026-10-06: Claude Code deny list names secret env files explicitly (deny beats allow, so the .env.* wildcard blocked .env.example). Add any new secret env file name to .claude/settings.json. Locked
 - 2026-10-06: Integration tests use a separate pg-boss schema (pgboss_test) so test jobs never reach a real worker on the same database. Locked
+- 2026-10-09: Prompt files live in packages/adapters/src/claude/prompts (next to the adapter code); hard rule 8 path updated, rule unchanged. Locked
+- 2026-10-09: Practice eval set v1 (11 made-up cases) defines: a hazard with nobody hurt is a safety_incident; a defect that costs money is quality_defect (amount still extracted); headcounts and delivery times are not amounts or decision deadlines. Reviewed by Darkhan; the owner confirms on the golden set. Locked

@@ -62,7 +62,7 @@ from `packageManager` in package.json via Corepack.
 6. Every table has company_id and Row Level Security from its first migration.
 7. AI calls only through adapters, each with a timeout, retry policy, and a logged
    model / latency / tokens / cost record. Model output is validated with zod before use.
-8. Prompts live in files under packages/adapters/claude/prompts with a version number.
+8. Prompts live in files under packages/adapters/src/claude/prompts with a version number.
    Changing a prompt requires running `pnpm eval` and reporting the before/after numbers.
 9. No secrets in code, logs, or chat. Use .env (gitignored) and keep .env.example current.
 10. Do not log message text or transcripts. Log ids. PM data is personal data.

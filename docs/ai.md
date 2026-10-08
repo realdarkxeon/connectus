@@ -52,7 +52,7 @@ export function routeLane(t: Triage, card: Card, rules: OwnerRule[], clock: Cloc
 Thresholds are placeholders; tune on the golden set. Every lane decision stores a
 human-readable reason ("safety risk 0.42 >= 0.3").
 
-## Extraction prompt v1 (packages/adapters/claude/prompts/extract.v1.md)
+## Extraction prompt v1 (packages/adapters/src/claude/prompts/extract.v1.md)
 Used with structured output bound to the Card schema.
 ```text
 You turn messages from construction project managers into a request card
