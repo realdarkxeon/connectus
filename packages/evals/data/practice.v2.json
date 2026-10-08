@@ -1,7 +1,7 @@
 {
   "name": "practice",
-  "version": 1,
-  "note": "Made up by Claude, reviewed by Darkhan. Proves the measuring tape works; says nothing about real quality. Replaced by the owner-labelled golden set (Step 5).",
+  "version": 2,
+  "note": "Made up by Claude, reviewed by Darkhan. Proves the measuring tape works; says nothing about real quality. Replaced by the owner-labelled golden set (Step 5). v2 (2026-10-09): p06 and p10 workStopped null -> false (\"всё по плану\", \"кран работает\" mean work continues), decided by Darkhan.",
   "context": {
     "now": "2026-10-08T10:00:00+05:00",
     "timezone": "Asia/Almaty",
@@ -10,7 +10,11 @@
   "cases": [
     {
       "id": "p01-rebar",
-      "sender": { "name": "PERSON_1", "workPackage": "монолит", "site": "ЖК Алтын" },
+      "sender": {
+        "name": "PERSON_1",
+        "workPackage": "монолит",
+        "site": "ЖК Алтын"
+      },
       "messages": [
         "Арматуры Ø12 не хватает на захватку 3, надо докупить 2 тонны. COMPANY_1 просит 380 тыс, ответ нужен завтра до 12:00"
       ],
@@ -24,7 +28,11 @@
     },
     {
       "id": "p02-fall",
-      "sender": { "name": "PERSON_2", "workPackage": "фасад", "site": "ЖК Алтын" },
+      "sender": {
+        "name": "PERSON_2",
+        "workPackage": "фасад",
+        "site": "ЖК Алтын"
+      },
       "messages": ["Рабочий упал с лесов на 2 этаже, скорая едет. Работы на секции остановили"],
       "expected": {
         "type": "safety_incident",
@@ -36,7 +44,11 @@
     },
     {
       "id": "p03-scaffold",
-      "sender": { "name": "PERSON_2", "workPackage": "фасад", "site": "ЖК Самал" },
+      "sender": {
+        "name": "PERSON_2",
+        "workPackage": "фасад",
+        "site": "ЖК Самал"
+      },
       "messages": [
         "Леса на секции Б шатаются, крепления ржавые. Никто не пострадал, люди пока работают"
       ],
@@ -50,7 +62,11 @@
     },
     {
       "id": "p04-facade-delay",
-      "sender": { "name": "PERSON_2", "workPackage": "фасад", "site": "ЖК Самал" },
+      "sender": {
+        "name": "PERSON_2",
+        "workPackage": "фасад",
+        "site": "ЖК Самал"
+      },
       "messages": [
         "Фасадчики не успевают из-за дождей, просим сдвинуть сдачу секции А с 15 на 22 октября"
       ],
@@ -64,7 +80,11 @@
     },
     {
       "id": "p05-insulation-no-amount",
-      "sender": { "name": "PERSON_3", "workPackage": "кровля", "site": "ЖК Алтын" },
+      "sender": {
+        "name": "PERSON_3",
+        "workPackage": "кровля",
+        "site": "ЖК Алтын"
+      },
       "messages": ["Нужно докупить утеплитель на кровлю, не хватает на последнюю секцию"],
       "expected": {
         "type": "spend_approval",
@@ -76,19 +96,27 @@
     },
     {
       "id": "p06-pour-done",
-      "sender": { "name": "PERSON_1", "workPackage": "монолит", "site": "ЖК Алтын" },
+      "sender": {
+        "name": "PERSON_1",
+        "workPackage": "монолит",
+        "site": "ЖК Алтын"
+      },
       "messages": ["Сегодня залили перекрытие 5 этажа, всё по плану"],
       "expected": {
         "type": "info_report",
         "amountKzt": null,
         "decideBy": null,
-        "workStopped": null,
+        "workStopped": false,
         "missing": []
       }
     },
     {
       "id": "p07-mesh-not-delivered",
-      "sender": { "name": "PERSON_1", "workPackage": "монолит", "site": "ЖК Самал" },
+      "sender": {
+        "name": "PERSON_1",
+        "workPackage": "монолит",
+        "site": "ЖК Самал"
+      },
       "messages": ["COMPANY_1 опять не привёз сетку, бригада простаивает с утра"],
       "expected": {
         "type": "supply_problem",
@@ -100,7 +128,11 @@
     },
     {
       "id": "p08-screed-cracks",
-      "sender": { "name": "PERSON_4", "workPackage": "отделка", "site": "ЖК Алтын" },
+      "sender": {
+        "name": "PERSON_4",
+        "workPackage": "отделка",
+        "site": "ЖК Алтын"
+      },
       "messages": ["На 3 этаже трещины в стяжке, надо переделывать, примерно 1,2 млн"],
       "expected": {
         "type": "quality_defect",
@@ -112,7 +144,11 @@
     },
     {
       "id": "p09-windows-voice",
-      "sender": { "name": "PERSON_4", "workPackage": "окна", "site": "ЖК Самал" },
+      "sender": {
+        "name": "PERSON_4",
+        "workPackage": "окна",
+        "site": "ЖК Самал"
+      },
       "messages": [
         "по окнам",
         "поставщик просит предоплату пятьдесят процентов чтобы запустить производство",
@@ -129,19 +165,27 @@
     },
     {
       "id": "p10-headcount-not-money",
-      "sender": { "name": "PERSON_1", "workPackage": "монолит", "site": "ЖК Алтын" },
+      "sender": {
+        "name": "PERSON_1",
+        "workPackage": "монолит",
+        "site": "ЖК Алтын"
+      },
       "messages": ["На смену вышли 12 человек, кран работает, бетон М300 ждём к 14:00"],
       "expected": {
         "type": "info_report",
         "amountKzt": null,
         "decideBy": null,
-        "workStopped": null,
+        "workStopped": false,
         "missing": []
       }
     },
     {
       "id": "p11-welders",
-      "sender": { "name": "PERSON_3", "workPackage": "металлоконструкции", "site": "ЖК Самал" },
+      "sender": {
+        "name": "PERSON_3",
+        "workPackage": "металлоконструкции",
+        "site": "ЖК Самал"
+      },
       "messages": [
         "Сварщиков не хватает, нужно ещё 3 человека с понедельника, иначе сорвём сроки по каркасу"
       ],

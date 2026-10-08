@@ -1,4 +1,4 @@
-// pnpm eval [--set <file>] [--model <id>] [--budget <usd>]
+// pnpm eval [--set <file>] [--model <id>] [--prompt extract.vN] [--budget <usd>]
 // Runs an eval set through the real extractor, prints the lab sheet, saves the run to
 // packages/evals/runs/. Exit code 1 when the run fails (missed safety case or capped).
 import { mkdir, writeFile } from "node:fs/promises";
@@ -9,8 +9,9 @@ import { formatReport, runEval } from "./run.ts";
 
 const { values } = parseArgs({
   options: {
-    set: { type: "string", default: "packages/evals/data/practice.v1.json" },
+    set: { type: "string", default: "packages/evals/data/practice.v2.json" },
     model: { type: "string", default: "claude-haiku-4-5" },
+    prompt: { type: "string" },
     budget: { type: "string", default: "0.50" },
   },
 });
@@ -21,7 +22,11 @@ if (!process.env.ANTHROPIC_API_KEY) {
 }
 
 const set = await loadEvalSet(values.set);
-const run = await runEval(set, createAnthropicExtractor(values.model), Number(values.budget));
+const run = await runEval(
+  set,
+  createAnthropicExtractor(values.model, values.prompt),
+  Number(values.budget),
+);
 console.log(formatReport(run));
 
 const runsDir = new URL("../../runs/", import.meta.url);

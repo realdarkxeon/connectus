@@ -78,7 +78,7 @@ describe("Claude card extractor", () => {
     expect(out.repaired).toBe(false);
     expect(out.call).toMatchObject({
       model: "claude-haiku-4-5",
-      promptVersion: "extract.v1",
+      promptVersion: "extract.v2",
       attempts: 1,
       inputTokens: 1500,
       outputTokens: 300,

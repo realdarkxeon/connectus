@@ -15,11 +15,13 @@ import {
 import { z } from "zod";
 import { costUsd, hasPrice, type TokenCounts } from "./pricing.ts";
 
-export const PROMPT_VERSION = "extract.v1";
-const SYSTEM_PROMPT = readFileSync(
-  new URL(`./prompts/${PROMPT_VERSION}.md`, import.meta.url),
-  "utf8",
-);
+// The current prompt. Older versions stay in prompts/ so evals can compare before/after.
+export const PROMPT_VERSION = "extract.v2";
+
+function loadPrompt(version: string): string {
+  if (!/^extract\.v\d+$/.test(version)) throw new Error(`Bad prompt version ${version}`);
+  return readFileSync(new URL(`./prompts/${version}.md`, import.meta.url), "utf8");
+}
 
 // The card as the model writes it. Structured outputs cannot express a free-form object, so
 // details travel as key/value pairs and become Card.details after the answer arrives.
@@ -48,14 +50,25 @@ export function anthropicCall(client: Anthropic): CallModel {
 }
 
 // The real extractor. The SDK reads ANTHROPIC_API_KEY from the environment.
-export function createAnthropicExtractor(model: string, timeoutMs = 30_000): CardExtractor {
-  return createClaudeExtractor({ call: anthropicCall(new Anthropic()), model, timeoutMs });
+export function createAnthropicExtractor(
+  model: string,
+  promptVersion = PROMPT_VERSION,
+  timeoutMs = 30_000,
+): CardExtractor {
+  const call = anthropicCall(new Anthropic());
+  return createClaudeExtractor({ call, model, timeoutMs, promptVersion });
 }
 
-export type ClaudeExtractorOptions = { call: CallModel; model: string; timeoutMs: number };
+export type ClaudeExtractorOptions = {
+  call: CallModel;
+  model: string;
+  timeoutMs: number;
+  promptVersion?: string;
+};
 
 export function createClaudeExtractor(options: ClaudeExtractorOptions): CardExtractor {
-  const { call, model, timeoutMs } = options;
+  const { call, model, timeoutMs, promptVersion = PROMPT_VERSION } = options;
+  const systemPrompt = loadPrompt(promptVersion);
   if (!hasPrice(model)) throw new Error(`No price for model ${model}: add it to pricing.ts`);
 
   return {
@@ -68,7 +81,7 @@ export function createClaudeExtractor(options: ClaudeExtractorOptions): CardExtr
         repaired,
         call: {
           model,
-          promptVersion: PROMPT_VERSION,
+          promptVersion,
           attempts,
           latencyMs: Math.round(performance.now() - started),
           inputTokens: tokens.input + tokens.cacheWrite + tokens.cacheRead,
@@ -83,7 +96,7 @@ export function createClaudeExtractor(options: ClaudeExtractorOptions): CardExtr
         let reply: Anthropic.Message;
         attempts += 1;
         try {
-          reply = await call({ model, system: SYSTEM_PROMPT, messages, timeoutMs });
+          reply = await call({ model, system: systemPrompt, messages, timeoutMs });
         } catch (error) {
           return invoice(err(failureFrom(error)));
         }
