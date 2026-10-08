@@ -54,7 +54,7 @@ IDs are uuid (gen_random_uuid) except EVENT (bigint identity, ordered).
 
 ## Request states
 Draft -> (more msgs) Draft | Discarded (noise) | Structuring (window closed)
-Structuring -> Clarifying (missing fields) | Triage (complete)
+Structuring -> Clarifying (missing fields) | Triage (complete) | Awaiting owner (card failed: raw text to owner)
 Clarifying -> Structuring (PM answered) | Triage (2 h timeout, marked incomplete)
 Triage -> Merged (duplicate) | AutoHandled (rule) | AwaitingOwner (interrupt/hot/digest)
 AutoHandled -> InProgress | AwaitingOwner (owner undo)
