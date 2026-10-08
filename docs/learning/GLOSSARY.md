@@ -76,10 +76,27 @@ New terms are added at the end of each step.
 | MCP | A plug that lets Claude use a service (Supabase, Railway) through tools. | `.mcp.json` | ★ | [Supabase MCP](https://supabase.com/docs/guides/ai-tools/mcp) |
 | Prompt injection | Hidden instructions inside data (e.g. a PM message) trying to steer an AI. Treat data as data. | `docs/learning/METHOD.md` | ★★ | [OWASP LLM Top 10](https://owasp.org/www-project-top-10-for-large-language-model-applications/) |
 
+## 6. Discovery data and AI quality (session 2026-10-09)
+
+| Term | Plain meaning | In our code | Depth | Dig deeper |
+|---|---|---|---|---|
+| Anonymization (pseudonymization) | Replacing names and contacts with labels, the same person always getting the same label, so "who said what" survives. | `packages/evals/src/anonymize/cleaner.ts` | ★★ | [ICO: pseudonymisation](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/data-sharing/anonymisation/pseudonymisation/) |
+| Suspects list / human gate | The cleaner shows what it did and what it was unsure about; a person signs off before data leaves. | `discovery-data/review.md` | ★★ | `docs/discovery/README.md` |
+| False positive / false negative | Wrongly flagging (a word replaced as a name) vs wrongly missing (a name slips through). Which is worse depends on whether it can be undone. | cleaner, safety gate | ★★ | [Precision and recall](https://en.wikipedia.org/wiki/Precision_and_recall) |
+| Eval | Testing the AI on examples whose correct answers we know, and counting. The lab press for AI output. | `pnpm eval`, `packages/evals/src/extraction/` | ★★ | [Anthropic: define success and build evals](https://platform.claude.com/docs/en/test-and-evaluate/develop-tests) |
+| Practice set vs golden set | Made-up examples that prove the tape works vs real labelled examples that prove the AI works. | `packages/evals/data/practice.v2.json` | ★★ | `docs/ai.md`, Evals |
+| Recall (safety recall) | Of all real safety incidents, the share the AI caught. Ours must be all of them, so it is a gate, not an average. | `summarize` in `score.ts` | ★★ | [Precision and recall](https://en.wikipedia.org/wiki/Precision_and_recall) |
+| Run-to-run variation | The same prompt can score differently on two runs; small sets exaggerate it (1 case = 9% of 11). | two runs per prompt in `packages/evals/runs/` | ★ | `docs/decisions.md` (prompt v2 entry) |
+| Overfitting to the test | Writing the test's answers into the prompt; the score rises, real quality doesn't. | prompt rules use general words, not practice phrases | ★★ | [Overfitting](https://en.wikipedia.org/wiki/Overfitting) |
+| Structured output | Asking the API to answer in an exact JSON shape (our card). We still inspect every answer ourselves. | `zodOutputFormat` in `packages/adapters/src/claude/extract.ts` | ★ | [Anthropic: structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) |
+| Tokens and cost | The AI is billed per piece of text in and out; we record it on every call (the invoice). | `packages/adapters/src/claude/pricing.ts` | ★ | [Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pricing) |
+| Prompt version | Prompts are numbered files; a change needs before/after eval numbers. | `packages/adapters/src/claude/prompts/` | ★★ | `CLAUDE.md`, hard rule 8 |
+
 ## Libraries we use (one line each)
 
 - **Hono**: the web server in reception. [docs](https://hono.dev/docs/)
 - **grammY**: talks to Telegram (receives, checks the secret, sends). [docs](https://grammy.dev/guide/deployment-types)
 - **pg / pg-boss**: talk to Postgres / queue jobs in Postgres. [pg-boss](https://pgboss.io/)
 - **zod**: checks data shapes. [docs](https://zod.dev/)
+- **@anthropic-ai/sdk**: the official way our code calls Claude. [docs](https://platform.claude.com/docs/en/api/sdks/typescript)
 - **Vitest / Biome / TypeScript / pnpm**: the toolbox, comparable to Jest / ESLint+Prettier / TS / npm.

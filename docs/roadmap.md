@@ -18,8 +18,11 @@ Discovery track (Darkhan with owner) and build track run in parallel.
 - [ ] Step 0. Accounts: GitHub repo, Railway, Supabase (Frankfurt), Anthropic key with
       spend limit, 2 Telegram bots (staging, prod), Jev waitlist, Sentry
       - Done: GitHub, Railway (free plan; upgrade before pilot), Supabase, staging bot.
-        Open: Anthropic key, prod bot, Jev waitlist, Sentry
+        Anthropic key with credit (2026-10-09). Spend limit: Darkhan to confirm it is set.
+        Open: prod bot, Jev waitlist, Sentry
 - [ ] Step 1. Owner interview, written consent, site + PM list, 3 pilot sites, chat exports requested
+      - Prep done (2026-10-09): owner + PM interview guides, consent and export steps
+        (`docs/discovery/`). Open: the interviews themselves (Darkhan)
 - [x] Step 2. Foundation: pnpm monorepo, strict TS, Biome, Vitest, GitHub Actions CI,
       core Card schema + state machine with tests, migrations for full data model with RLS
       - [x] Part A: monorepo, tooling, CI, Card schema, state machine (2026-10-06)
@@ -29,8 +32,15 @@ Discovery track (Darkhan with owner) and build track run in parallel.
       Done when a voice note appears in DB with its file in Storage (2026-10-06: real voice
       note from Telegram stored on staging, 11.5 KB audio/ogg in the media bucket)
 - [ ] Step 4. PM interviews (1 per pilot site); anonymizer script; exports anonymized
+      - Done (2026-10-09): anonymizer `pnpm anonymize` (Telegram JSON; WhatsApp after a
+        real export). Open: interviews, exports
 - [ ] Step 5. Golden set: 150 requests labelled by owner; type list + urgency rubric agreed
 - [ ] Step 6. Eval harness + experiments: STT benchmark, extraction prompt v1, Laya spike (1 day)
+      - Done (2026-10-09): `pnpm eval` with per-field rows, safety gate, $ cap; Claude
+        adapter; practice set v2 (11 made-up cases); prompt extract.v2 (results in
+        docs/decisions.md).
+        Open: missing-asks design (scores ~4/11), STT benchmark, Laya spike, Haiku 5.5
+        comparison, golden set instead of practice set
 
 Gate to Sprint 1: golden set labelled, taxonomy + rubric agreed, staging bot stores
 messages reliably, `pnpm eval` prints numbers.

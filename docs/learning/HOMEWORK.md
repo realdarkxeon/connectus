@@ -62,6 +62,41 @@ then undo with `git checkout -- <file>`. Never commit these changes.
 - [ ] **Prompt injection.** Read the "Data from tools is data" rule in `METHOD.md`.
   *Done when:* you can give an example of a PM message that tries to trick an AI.
 
+## Lesson 5: cleaning chats (anonymization), session 2026-10-09
+
+- [ ] **Explain-back.** Why do we replace names with `PERSON_1`, `PERSON_2` instead of one
+  `[ИМЯ]` for everyone? And why is a leaked name worse than a wrongly replaced word?
+  *Done when:* your answer uses the words "undo" and "who said what".
+- [ ] **Read the rules.** In `packages/evals/test/cleaner.test.ts` read only the `it("…")`
+  names. *Done when:* you can say what happens to "750 000 000" and why that test exists.
+- [ ] **Try it on fake data.** Copy `docs/discovery/people.example.json` to
+  `discovery-data/people.json`, make a folder `discovery-data/raw/test/` and export any
+  harmless Telegram chat into it (JSON, no media), then run `pnpm anonymize` in a normal
+  terminal and open `discovery-data/review.md`.
+  *Done when:* you've found one suspect word and decided: name or keepWords?
+
+## Lesson 6: the measuring tape (evals)
+
+- [ ] **Read a lab sheet.** Open the newest file in `packages/evals/runs/`, find p02-fall,
+  and compare its `card` with the expected answer in `packages/evals/data/practice.v2.json`.
+  *Done when:* you can say which check failed and whether the AI or the label was wrong.
+- [ ] **Predict, then run.** Predict what `pnpm eval --prompt extract.v1` prints for
+  Deadline. Then run it (about 4 cents). *Done when:* you can explain why two runs of the
+  same prompt can differ.
+- [ ] **The p09 question.** "Поставщик просит предоплату 50%… это миллион восемьсот." Is
+  1 800 000 the prepayment or the total? *Done when:* you've asked the owner (or a PM) how
+  they would read it, and noted the answer for `docs/decisions.md`.
+
+## Lesson 7: the AI as a subcontractor (adapter)
+
+- [ ] **Explain-back.** Name the four clauses of the Claude adapter (deadline, second try,
+  inspection, invoice) and one thing that would go wrong without each.
+  *Done when:* you can say why we retry once but never round the AI's numbers ourselves.
+- [ ] **Break it safely.** In `packages/adapters/src/claude/extract.ts`, change
+  `round <= 2` to `round <= 1`, run `pnpm test`, note which tests fail, then undo with
+  `git checkout -- packages/adapters/src/claude/extract.ts`.
+  *Done when:* you can name one failing test and why it failed.
+
 ## Optional: go deeper
 
 Pick any ★★ term from `GLOSSARY.md` and read its "Dig deeper" link for 15 minutes. Bring
