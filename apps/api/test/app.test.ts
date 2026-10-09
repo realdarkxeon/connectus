@@ -87,9 +87,9 @@ describe("worker config", () => {
     );
   });
 
-  it("treats an empty ElevenLabs key as no key (voice notes then go as audio)", () => {
-    const config = loadConfig(workerSchema, { ...workerEnv, ELEVENLABS_API_KEY: "" });
-    expect(config.ELEVENLABS_API_KEY).toBeUndefined();
+  it("treats an empty Soniox key as no key (voice notes then go as audio)", () => {
+    const config = loadConfig(workerSchema, { ...workerEnv, SONIOX_API_KEY: "" });
+    expect(config.SONIOX_API_KEY).toBeUndefined();
   });
 
   it("uses Haiku 4.5 for cards unless told otherwise", () => {

@@ -173,8 +173,8 @@ beforeEach(() => {
 let ownerMessages: CardContext[] = [];
 
 const sttCall: SttCallRecord = {
-  provider: "elevenlabs",
-  model: "scribe_v2",
+  provider: "soniox",
+  model: "stt-async-v5",
   attempts: 1,
   latencyMs: 1500,
   audioSeconds: 20,

@@ -118,8 +118,8 @@ describe("PostgresRequestRepo", () => {
     await repo.recordSttCall(
       requestId,
       {
-        provider: "elevenlabs",
-        model: "scribe_v2",
+        provider: "soniox",
+        model: "stt-async-v5",
         attempts: 1,
         latencyMs: 2100,
         audioSeconds: 30,
@@ -133,8 +133,8 @@ describe("PostgresRequestRepo", () => {
     );
     expect(ai.rows).toEqual([
       {
-        provider: "elevenlabs",
-        model: "scribe_v2",
+        provider: "soniox",
+        model: "stt-async-v5",
         purpose: "transcribe",
         cost_usd: "0.00220000",
         ok: true,

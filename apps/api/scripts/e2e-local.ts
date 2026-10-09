@@ -146,7 +146,7 @@ const childEnv: NodeJS.ProcessEnv = {
 // Never call real AI services from the rehearsal: cards fall back to the raw message and
 // voice notes to the original audio.
 delete childEnv.ANTHROPIC_API_KEY;
-delete childEnv.ELEVENLABS_API_KEY;
+delete childEnv.SONIOX_API_KEY;
 // Process logs go to files, for when a check fails.
 const logDir = process.env.E2E_LOG_DIR ?? "/tmp";
 const children: ChildProcess[] = ["server", "worker"].map((name) => {

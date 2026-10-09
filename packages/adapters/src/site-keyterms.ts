@@ -1,4 +1,4 @@
-// Site jargon sent as recognition hints (keyterms, max 1000, each under 50 characters).
+// Site jargon sent to speech to text as recognition hints (Soniox context "terms").
 // Starter list; extend from the PM interviews (docs/discovery/interview-pm.md, question 7).
 export const SITE_KEYTERMS: readonly string[] = [
   "опалубка",

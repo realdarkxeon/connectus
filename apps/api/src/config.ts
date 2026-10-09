@@ -45,10 +45,7 @@ export const workerSchema = z
     CARD_MODEL: z.string().default("claude-haiku-4-5"),
     // Voice notes -> text (MVP S3). Optional: without it, voice notes reach the owner as the
     // original audio, as before. An empty value (an unset Railway reference) counts as unset.
-    ELEVENLABS_API_KEY: z.preprocess(
-      (v) => (v === "" ? undefined : v),
-      z.string().min(10).optional(),
-    ),
+    SONIOX_API_KEY: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(10).optional()),
   })
   .refine((c) => c.APP_ENV === "local" || c.ANTHROPIC_API_KEY !== undefined, {
     path: ["ANTHROPIC_API_KEY"],
