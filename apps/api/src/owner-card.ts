@@ -13,7 +13,7 @@ const senderLine = (pm: CardSender) =>
 const kzt = (amount: number) => `${String(amount).replace(/\B(?=(\d{3})+(?!\d))/g, " ")} ₸`;
 
 // "2026-10-09T12:00:00+05:00" in Asia/Almaty -> "пт 09.10, 12:00"
-function deadline(iso: string, timeZone: string): string {
+export function localTime(iso: string, timeZone: string): string {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("ru-RU", {
       timeZone,
@@ -46,7 +46,7 @@ export function formatOwnerCard(card: Card, pm: CardSender, timeZone: string): s
   const facts: string[] = [];
   if (card.ask) facts.push(`❓ ${card.ask}`);
   if (card.amountKzt !== null) facts.push(`${CARD_TEXTS.amount}: ${kzt(card.amountKzt)}`);
-  if (card.decideBy) facts.push(`${CARD_TEXTS.decideBy}: ${deadline(card.decideBy, timeZone)}`);
+  if (card.decideBy) facts.push(`${CARD_TEXTS.decideBy}: ${localTime(card.decideBy, timeZone)}`);
   if (card.missing.length > 0) {
     const names = card.missing.map((m) => CARD_TEXTS.missing[m.field] ?? m.field);
     facts.push(`${CARD_TEXTS.notStated}: ${[...new Set(names)].join(", ")}`);
@@ -73,4 +73,15 @@ export function splitForTelegram(text: string, max = TELEGRAM_MAX): string[] {
   }
   parts.push(rest);
   return parts;
+}
+
+// The owner's message for a request: the card, or the PM's raw message when there is no card.
+export function ownerMessage(
+  card: Card | null,
+  ctx: { sender: { name: string }; pmSite: string | null; text: string | null; timezone: string },
+): string {
+  const pm: CardSender = { name: ctx.sender.name, workPackage: null, site: ctx.pmSite };
+  return card
+    ? formatOwnerCard(card, pm, ctx.timezone)
+    : formatRawFallback(pm, ctx.text?.trim() || CARD_TEXTS.noText);
 }

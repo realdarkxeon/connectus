@@ -9,12 +9,7 @@ import {
 import type { CardExtractor, Clock, Extraction } from "@connectus/core";
 import { decisionButtons } from "../buttons.ts";
 import { log } from "../log.ts";
-import {
-  type CardSender,
-  formatOwnerCard,
-  formatRawFallback,
-  splitForTelegram,
-} from "../owner-card.ts";
+import { ownerMessage, splitForTelegram } from "../owner-card.ts";
 import { CARD_TEXTS } from "../texts.ts";
 
 export type CardDeps = {
@@ -70,14 +65,15 @@ export async function handleCard(job: CardJob, deps: CardDeps): Promise<void> {
   const owners = await deps.requests.ownerChats(ctx.companyId);
   if (owners.length === 0) throw new Error(`company ${ctx.companyId} has no owner on Telegram`);
 
-  const pm: CardSender = { name: ctx.sender.name, workPackage: null, site: ctx.pmSite };
-  const text = request.card
-    ? formatOwnerCard(request.card, pm, ctx.timezone)
-    : formatRawFallback(pm, ctx.text?.trim() || CARD_TEXTS.noText);
+  const text = ownerMessage(request.card, ctx);
   const original = parseTelegramMessageId(ctx.externalMessageId);
   // The PM's name links to their Telegram chat (in a private chat, the chat id is the user id).
   const nameAt = text.indexOf(`${CARD_TEXTS.from}: `) + CARD_TEXTS.from.length + 2;
-  const link = { offset: nameAt, length: pm.name.length, url: `tg://user?id=${original.chatId}` };
+  const link = {
+    offset: nameAt,
+    length: ctx.sender.name.length,
+    url: `tg://user?id=${original.chatId}`,
+  };
   const parts = splitForTelegram(text);
   const cards: OwnerCardRef[] = [];
   for (const chatId of owners) {

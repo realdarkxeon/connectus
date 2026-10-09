@@ -40,4 +40,15 @@ export const CARD_TEXTS = {
 export const DECISION_TEXTS = {
   approve: "✅ Одобрить",
   reject: "❌ Отклонить",
+  // Status line on the owner's card and the notice on the tapped button.
+  approved: "✅ Одобрено",
+  rejected: "❌ Отклонено",
+  alreadyApproved: "Уже одобрено",
+  alreadyRejected: "Уже отклонено",
+  noAccess: "Нет доступа",
+  // To the PM, as a reply to their message.
+  pmApproved: "✅ Владелец одобрил",
+  pmRejected: "❌ Владелец отклонил",
+  pmRejectedHint: "Если нужно, свяжитесь с владельцем.",
+  yourMessage: "ваше сообщение",
 } as const;

@@ -40,6 +40,9 @@ const SUPABASE_SECRET_KEY = (env.SECRET_KEY || env.SERVICE_ROLE_KEY) as string;
 // --- fake Telegram ---
 const sent: { chat_id: string; text: string }[] = [];
 const copied: { chat_id: string; from_chat_id: string; message_id: number }[] = [];
+const answered: { id: string; text: string }[] = [];
+const edited: { chat_id: string; message_id: number; text: string }[] = [];
+let nextMessageId = 1000;
 const fakeTelegram = createServer((req, res) => {
   let body = "";
   req.on("data", (chunk) => {
@@ -66,10 +69,23 @@ const fakeTelegram = createServer((req, res) => {
         message_id: params.message_id,
       });
       reply({ message_id: 2 });
+    } else if (url.endsWith("/answerCallbackQuery")) {
+      const params = JSON.parse(body || "{}");
+      answered.push({ id: params.callback_query_id, text: params.text });
+      reply(true);
+    } else if (url.endsWith("/editMessageText")) {
+      const params = JSON.parse(body || "{}");
+      edited.push({
+        chat_id: String(params.chat_id),
+        message_id: params.message_id,
+        text: params.text,
+      });
+      reply(true);
     } else if (url.endsWith("/sendMessage")) {
       const params = JSON.parse(body || "{}");
       sent.push({ chat_id: String(params.chat_id), text: params.text });
-      reply({ message_id: 1, date: 0, chat: { id: params.chat_id, type: "private" } });
+      nextMessageId += 1;
+      reply({ message_id: nextMessageId, date: 0, chat: { id: params.chat_id, type: "private" } });
     } else {
       res.writeHead(404).end();
     }
@@ -264,6 +280,51 @@ try {
     [[externalId, `${PM_TELEGRAM_ID}:${messageNumber + 1}`]],
   );
   check("owner notified exactly once per message", receipts.rows[0]?.n === 2);
+
+  // MVP S2: the owner taps ✅ on the text card; a tap from the PM's account is refused.
+  const textRequest = await pool.query<{ request_id: string }>(
+    "select request_id from public.message where external_message_id = $1",
+    [`${PM_TELEGRAM_ID}:${messageNumber + 1}`],
+  );
+  const requestId = textRequest.rows[0]?.request_id;
+  const tap = (fromId: number, id: string, data: string) => ({
+    update_id: messageNumber + 10 + Number(id.slice(-1)),
+    callback_query: {
+      id,
+      from: { id: fromId, is_bot: false, first_name: "E2E" },
+      chat_instance: "e2e",
+      data,
+      message: {
+        message_id: 1,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: fromId, type: "private", first_name: "E2E" },
+        text: "card",
+      },
+    },
+  });
+  await knock(tap(PM_TELEGRAM_ID, "CBQ-E2E-1", `a:${requestId}`), SECRET);
+  const refused = await waitFor(async () => answered.find((a) => a.id === "CBQ-E2E-1"));
+  check("a tap from the PM's account is refused", refused?.text === "Нет доступа");
+  await knock(tap(OWNER_TELEGRAM_ID, "CBQ-E2E-2", `a:${requestId}`), SECRET);
+  const pmTold = await waitFor(async () =>
+    sent.find(
+      (m) => m.chat_id === String(PM_TELEGRAM_ID) && m.text.startsWith("✅ Владелец одобрил"),
+    ),
+  );
+  check("owner taps ✅: the PM is told 'Владелец одобрил'", pmTold !== undefined);
+  check(
+    "the tapped card shows the decision",
+    edited.some((e) => e.chat_id === String(OWNER_TELEGRAM_ID) && e.text.includes("✅ Одобрено ·")),
+  );
+  const decided = await pool.query<{ status: string; verdicts: string[] }>(
+    `select r.status, array(select verdict from public.decision d where d.request_id = r.id) as verdicts
+     from public.request r where r.id = $1`,
+    [requestId],
+  );
+  check(
+    "decision recorded once, request in progress",
+    decided.rows[0]?.status === "in_progress" && decided.rows[0]?.verdicts.join() === "approve",
+  );
 } finally {
   for (const child of children) child.kill("SIGTERM");
   fakeTelegram.close();

@@ -1,4 +1,5 @@
 import {
+  type ButtonJob,
   type CardJob,
   createAnthropicExtractor,
   ensureQueues,
@@ -16,6 +17,7 @@ import type { CardExtractor, Clock } from "@connectus/core";
 import pg from "pg";
 import { type Job, PgBoss } from "pg-boss";
 import { loadConfig, readCaCertificate, workerSchema } from "./config.ts";
+import { handleButton } from "./jobs/button.ts";
 import { handleCard } from "./jobs/card.ts";
 import { handleIngest } from "./jobs/ingest.ts";
 import { handleMedia } from "./jobs/media.ts";
@@ -106,6 +108,10 @@ await boss.work<CardJob>(
   worker<CardJob>(QUEUES.card, (data) =>
     handleCard(data, { requests, telegram, extractor, clock }),
   ),
+);
+await boss.work<ButtonJob>(
+  QUEUES.button,
+  worker<ButtonJob>(QUEUES.button, (data) => handleButton(data, { requests, telegram })),
 );
 log.info("worker started", { env: config.APP_ENV, cardModel: config.CARD_MODEL });
 

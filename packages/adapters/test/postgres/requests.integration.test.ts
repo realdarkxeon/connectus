@@ -194,6 +194,63 @@ describe("PostgresRequestRepo", () => {
     });
   });
 
+  it("finds a person by their Telegram account", async () => {
+    expect(await repo.personByTelegram(ownerTelegramId)).toEqual({
+      personId: ownerId,
+      companyId,
+      role: "owner",
+    });
+    expect(await repo.personByTelegram("0")).toBeNull();
+  });
+
+  it("records the owner's decision once: the first tap wins", async () => {
+    const requestId = await repo.openRequest(await newMessage());
+    await repo.saveExtraction(requestId, okExtraction);
+    const first = await repo.decide(requestId, { personId: ownerId, companyId }, "approve");
+    const second = await repo.decide(requestId, { personId: ownerId, companyId }, "reject");
+    expect(first).toMatchObject({ outcome: "decided", verdict: "approve", status: "in_progress" });
+    expect(second).toMatchObject({ outcome: "already", verdict: "approve", status: "in_progress" });
+    expect(second.outcome !== "forbidden" && second.decidedAt).toEqual(NOW);
+    expect((await events(requestId)).map((e) => e.type).slice(-1)).toEqual(["owner_approved"]);
+    const rows = await pool.query(
+      "select verdict, owner_id from public.decision where request_id = $1",
+      [requestId],
+    );
+    expect(rows.rows).toEqual([{ verdict: "approve", owner_id: ownerId }]);
+  });
+
+  it("moves a rejected request to rejected", async () => {
+    const requestId = await repo.openRequest(await newMessage());
+    await repo.saveExtraction(requestId, okExtraction);
+    const result = await repo.decide(requestId, { personId: ownerId, companyId }, "reject");
+    expect(result).toMatchObject({ outcome: "decided", status: "rejected" });
+  });
+
+  it("refuses a decision from another company's owner", async () => {
+    const requestId = await repo.openRequest(await newMessage());
+    await repo.saveExtraction(requestId, okExtraction);
+    const result = await repo.decide(
+      requestId,
+      { personId: randomUUID(), companyId: randomUUID() },
+      "approve",
+    );
+    expect(result).toEqual({ outcome: "forbidden" });
+    expect((await repo.request(requestId))?.status).toBe("awaiting_owner");
+  });
+
+  it("finds the PM's message behind a request", async () => {
+    const messageId = await newMessage();
+    const requestId = await repo.openRequest(messageId);
+    expect(await repo.messageOf(requestId)).toBe(messageId);
+  });
+
+  it("remembers that the PM was told the decision", async () => {
+    const requestId = await repo.openRequest(await newMessage());
+    expect(await repo.wasPmNotified(requestId)).toBe(false);
+    await repo.markPmNotified(requestId);
+    expect(await repo.wasPmNotified(requestId)).toBe(true);
+  });
+
   it("finds the owners' Telegram chats, not the PMs'", async () => {
     expect(await repo.ownerChats(companyId)).toEqual([ownerTelegramId]);
   });

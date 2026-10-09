@@ -32,8 +32,15 @@ export type StoredRequest = {
   card: Card | null;
 };
 
-// The logbook entry that serves as the delivery receipt for the owner's card.
+// Logbook entries that serve as delivery receipts: the owner's card, the PM's answer.
 const OWNER_NOTIFIED = "owner_notified";
+const PM_NOTIFIED = "pm_notified";
+
+export type Verdict = "approve" | "reject";
+export type Person = { personId: string; companyId: string; role: "owner" | "deputy" | "pm" };
+export type DecisionResult =
+  | { outcome: "decided" | "already"; verdict: Verdict; status: RequestStatus; decidedAt: Date }
+  | { outcome: "forbidden" };
 
 // Requests for the card job (MVP S1). Every status change goes through core's transition()
 // and writes its EVENT row in the same transaction (hard rule 4). The server connection
@@ -208,6 +215,88 @@ export class PostgresRequestRepo {
       `insert into public.event (company_id, request_id, type, payload, at)
        select company_id, id, $2, $3, $4 from public.request where id = $1`,
       [requestId, OWNER_NOTIFIED, { cards }, this.clock.now()],
+    );
+  }
+
+  async personByTelegram(telegramUserId: string): Promise<Person | null> {
+    const res = await this.pool.query<Person>(
+      `select p.id as "personId", p.company_id as "companyId", p.role
+       from public.channel_identity ci
+       join public.person p on p.company_id = ci.company_id and p.id = ci.person_id
+       where ci.channel = 'telegram' and ci.external_id = $1`,
+      [telegramUserId],
+    );
+    return res.rows[0] ?? null;
+  }
+
+  // The owner's decision. Only while the request waits for the owner, so the first tap wins
+  // and a second tap (or a retried job) gets "already" with the first decision. A request of
+  // another company is "forbidden" and nothing changes.
+  async decide(
+    requestId: string,
+    owner: Pick<Person, "personId" | "companyId">,
+    verdict: Verdict,
+  ): Promise<DecisionResult> {
+    return this.inTransaction(async (client) => {
+      const res = await client.query<{ status: RequestStatus }>(
+        "select status from public.request where id = $1 and company_id = $2 for update",
+        [requestId, owner.companyId],
+      );
+      const r = res.rows[0];
+      if (!r) return { outcome: "forbidden" };
+
+      if (r.status !== "awaiting_owner") {
+        const last = await client.query<{ verdict: Verdict; decided_at: Date }>(
+          `select verdict, decided_at from public.decision
+           where request_id = $1 and verdict in ('approve', 'reject')
+           order by decided_at desc limit 1`,
+          [requestId],
+        );
+        const d = last.rows[0];
+        if (!d) throw new Error(`request ${requestId} is ${r.status} with no decision`);
+        return {
+          outcome: "already",
+          verdict: d.verdict,
+          status: r.status,
+          decidedAt: d.decided_at,
+        };
+      }
+
+      const decidedAt = this.clock.now();
+      await client.query(
+        `insert into public.decision (company_id, request_id, owner_id, verdict, decided_at)
+         values ($1, $2, $3, $4, $5)`,
+        [owner.companyId, requestId, owner.personId, verdict, decidedAt],
+      );
+      const status = await this.move(client, requestId, owner.companyId, "awaiting_owner", [
+        { type: verdict === "approve" ? "owner_approved" : "owner_rejected" },
+      ]);
+      return { outcome: "decided", verdict, status, decidedAt };
+    });
+  }
+
+  // MVP: one message per request, so this is that message.
+  async messageOf(requestId: string): Promise<string | null> {
+    const res = await this.pool.query<{ id: string }>(
+      "select id from public.message where request_id = $1 order by received_at limit 1",
+      [requestId],
+    );
+    return res.rows[0]?.id ?? null;
+  }
+
+  async wasPmNotified(requestId: string): Promise<boolean> {
+    const res = await this.pool.query(
+      "select 1 from public.event where request_id = $1 and type = $2 limit 1",
+      [requestId, PM_NOTIFIED],
+    );
+    return (res.rowCount ?? 0) > 0;
+  }
+
+  async markPmNotified(requestId: string): Promise<void> {
+    await this.pool.query(
+      `insert into public.event (company_id, request_id, type, payload, at)
+       select company_id, id, $2, '{}', $3 from public.request where id = $1`,
+      [requestId, PM_NOTIFIED, this.clock.now()],
     );
   }
 
