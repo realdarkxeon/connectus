@@ -24,6 +24,7 @@ import { handleMedia } from "./jobs/media.ts";
 import { handleOwnerMessage } from "./jobs/owner.ts";
 import { handleUnrouted } from "./jobs/unrouted.ts";
 import { log } from "./log.ts";
+import { LIST_TEXTS } from "./texts.ts";
 
 // The workshop: takes tickets from the queues and does the slow work.
 const config = loadConfig(workerSchema, process.env);
@@ -112,7 +113,7 @@ await boss.work<CardJob>(
       telegram,
       extractor,
       clock,
-      ownerMessage: (ctx) => handleOwnerMessage(ctx, { requests, telegram }),
+      ownerMessage: (ctx) => handleOwnerMessage(ctx, { requests, telegram, clock }),
     }),
   ),
 );
@@ -120,6 +121,15 @@ await boss.work<ButtonJob>(
   QUEUES.button,
   worker<ButtonJob>(QUEUES.button, (data) => handleButton(data, { requests, telegram })),
 );
+// Owners' command menu (/pending, /active, /history), in their chats only. A failure here
+// must not stop the worker: the commands work when typed even without the menu.
+for (const chatId of await requests.allOwnerChats()) {
+  await telegram
+    .setChatCommands(chatId, LIST_TEXTS.commands)
+    .catch((error: unknown) =>
+      log.warn("owner menu not set", { error: error instanceof Error ? error.message : "unknown" }),
+    );
+}
 log.info("worker started", { env: config.APP_ENV, cardModel: config.CARD_MODEL });
 
 // Railway sends SIGTERM before replacing a deploy: let active jobs finish, then exit.

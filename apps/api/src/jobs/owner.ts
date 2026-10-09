@@ -1,10 +1,14 @@
 import {
   type CardContext,
+  type ListItem,
+  type ListKind,
   parseTelegramMessageId,
   type SendOptions,
   type StoredRequest,
 } from "@connectus/adapters";
+import type { Clock } from "@connectus/core";
 import { splitForTelegram } from "../owner-card.ts";
+import { formatList } from "../owner-lists.ts";
 import { OWNER_TEXTS } from "../texts.ts";
 
 export type OwnerDeps = {
@@ -15,11 +19,19 @@ export type OwnerDeps = {
     cardContext(messageId: string): Promise<CardContext | null>;
     wasReplyForwarded(ownerMessageId: string): Promise<boolean>;
     markReplyForwarded(requestId: string, ownerMessageId: string): Promise<void>;
+    listRequests(companyId: string, kind: ListKind): Promise<{ total: number; items: ListItem[] }>;
   };
   telegram: {
     send(chatId: string, text: string, options?: SendOptions): Promise<number>;
     copy(toChatId: string, fromChatId: string, messageId: number): Promise<void>;
   };
+  clock: Clock;
+};
+
+const COMMANDS: Record<string, ListKind> = {
+  "/pending": "pending",
+  "/active": "active",
+  "/history": "history",
 };
 
 // A message from the owner (MVP S2). A reply to a card goes to that card's PM, verbatim
@@ -28,6 +40,16 @@ export type OwnerDeps = {
 export async function handleOwnerMessage(ctx: CardContext, deps: OwnerDeps): Promise<void> {
   const owner = parseTelegramMessageId(ctx.externalMessageId);
   const hint = () => deps.telegram.send(owner.chatId, OWNER_TEXTS.hint, {});
+
+  // Commands: "/pending", also as "/pending@botname" (how Telegram sends menu taps in groups).
+  const command = ctx.text?.trim().split(/\s/)[0]?.toLowerCase().replace(/@.*$/, "");
+  const kind = command ? COMMANDS[command] : undefined;
+  if (kind) {
+    const list = await deps.requests.listRequests(ctx.companyId, kind);
+    const { text, buttons } = formatList(kind, list, ctx.timezone, deps.clock.now());
+    await deps.telegram.send(owner.chatId, text, { buttons });
+    return;
+  }
 
   const repliedTo = ctx.replyToExternalMessageId
     ? parseTelegramMessageId(ctx.replyToExternalMessageId)

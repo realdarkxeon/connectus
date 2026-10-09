@@ -219,6 +219,14 @@ describe("PostgresRequestRepo", () => {
     expect(rows.rows).toEqual([{ verdict: "approve", owner_id: ownerId }]);
   });
 
+  it("reads a request's latest decision, or none", async () => {
+    const requestId = await repo.openRequest(await newMessage());
+    await repo.saveExtraction(requestId, okExtraction);
+    expect(await repo.latestDecision(requestId)).toBeNull();
+    await repo.decide(requestId, { personId: ownerId, companyId }, "reject");
+    expect(await repo.latestDecision(requestId)).toEqual({ verdict: "reject", decidedAt: NOW });
+  });
+
   it("moves a rejected request to rejected", async () => {
     const requestId = await repo.openRequest(await newMessage());
     await repo.saveExtraction(requestId, okExtraction);
@@ -278,6 +286,62 @@ describe("PostgresRequestRepo", () => {
       ownerMessageId,
     ]);
     expect(linked.rows[0].request_id).toBe(requestId);
+  });
+
+  it("lists pending requests: safety first, then nearest deadline, then oldest", async () => {
+    const listCo = randomUUID();
+    const listPm = randomUUID();
+    const listOwner = randomUUID();
+    await pool.query("insert into public.company (id, name) values ($1, 'List Co')", [listCo]);
+    await pool.query(
+      `insert into public.person (id, company_id, role, display_name)
+       values ($1, $3, 'pm', 'Айбек'), ($2, $3, 'owner', 'Владелец')`,
+      [listPm, listOwner, listCo],
+    );
+    const make = async (overrides: Partial<Card>, text = "текст") => {
+      const id = randomUUID();
+      await pool.query(
+        `insert into public.message (id, company_id, person_id, channel, external_message_id, kind, text)
+         values ($1, $2, $3, 'telegram', $4, 'text', $5)`,
+        [id, listCo, listPm, `${randomUUID()}:1`, text],
+      );
+      const requestId = await repo.openRequest(id);
+      await repo.saveExtraction(requestId, {
+        ...okExtraction,
+        result: { ok: true, value: { ...card, ...overrides } },
+      });
+      return requestId;
+    };
+    const old = await make({ summary: "Старый", decideBy: null });
+    const soon = await make({ summary: "Срочно", decideBy: "2026-10-09T08:00:00+05:00" });
+    const later = await make({ summary: "Позже", decideBy: "2026-10-12T08:00:00+05:00" });
+    const safety = await make({ type: "safety_incident", summary: "Леса", decideBy: null });
+    const decided = await make({ summary: "Решено" });
+    await repo.decide(decided, { personId: listOwner, companyId: listCo }, "approve");
+
+    const pending = await repo.listRequests(listCo, "pending");
+    expect(pending.total).toBe(4);
+    expect(pending.items.map((i) => i.id)).toEqual([safety, soon, later, old]);
+    expect(pending.items[0]).toMatchObject({
+      type: "safety_incident",
+      summary: "Леса",
+      pmName: "Айбек",
+      verdict: null,
+    });
+
+    const active = await repo.listRequests(listCo, "active");
+    expect(active.items.map((i) => i.id)).toEqual([decided]);
+    const history = await repo.listRequests(listCo, "history");
+    expect(history.items[0]).toMatchObject({ id: decided, verdict: "approve" });
+    expect(history.items[0]?.decidedAt).toEqual(NOW);
+  });
+
+  it("lists a request without a card by the start of the PM's text", async () => {
+    const requestId = await repo.openRequest(await newMessage("бетон не приехал, что делать"));
+    await repo.markCardFailed(requestId, "timeout");
+    const pending = await repo.listRequests(companyId, "pending");
+    const item = pending.items.find((i) => i.id === requestId);
+    expect(item).toMatchObject({ type: null, summary: null, text: "бетон не приехал, что делать" });
   });
 
   it("finds the owners' Telegram chats, not the PMs'", async () => {

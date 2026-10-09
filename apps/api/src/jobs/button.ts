@@ -2,13 +2,14 @@ import {
   type ButtonJob,
   type CardContext,
   type DecisionResult,
+  type OwnerCardRef,
   type Person,
   parseTelegramMessageId,
   type SendOptions,
   type StoredRequest,
   type Verdict,
 } from "@connectus/adapters";
-import { decodeButton } from "../buttons.ts";
+import { decisionButtons, decodeButton } from "../buttons.ts";
 import { log } from "../log.ts";
 import { localTime, ownerMessage, splitForTelegram } from "../owner-card.ts";
 import { DECISION_TEXTS } from "../texts.ts";
@@ -26,6 +27,8 @@ export type ButtonDeps = {
     cardContext(messageId: string): Promise<CardContext | null>;
     wasPmNotified(requestId: string): Promise<boolean>;
     markPmNotified(requestId: string): Promise<void>;
+    latestDecision(requestId: string): Promise<{ verdict: Verdict; decidedAt: Date } | null>;
+    markOwnerNotified(requestId: string, cards: OwnerCardRef[]): Promise<void>;
   };
   telegram: {
     answerButton(callbackQueryId: string, text: string): Promise<void>;
@@ -39,9 +42,13 @@ export type ButtonDeps = {
 // edit is the same each time, and the PM's answer has its own receipt.
 export async function handleButton(job: ButtonJob, deps: ButtonDeps): Promise<void> {
   const button = decodeButton(job.data);
-  if (!button || button.action === "open") return; // "open" arrives with owner commands
+  if (!button) return;
 
   const person = await deps.requests.personByTelegram(job.fromUserId);
+  if (button.action === "open") {
+    await openCard(deps, job, button.requestId, person);
+    return;
+  }
   const verdict: Verdict = button.action === "approve" ? "approve" : "reject";
   const result =
     person?.role === "owner"
@@ -88,6 +95,52 @@ export async function handleButton(job: ButtonJob, deps: ButtonDeps): Promise<vo
   const original = parseTelegramMessageId(ctx.externalMessageId);
   await deps.telegram.send(original.chatId, text, { replyTo: original.messageId });
   await deps.requests.markPmNotified(button.requestId);
+}
+
+// A number under an owner list: send that card again. Still pending: with its decision
+// buttons, recorded like any card so a reply to it reaches the PM. Decided: with its
+// decision and no buttons.
+async function openCard(
+  deps: ButtonDeps,
+  job: ButtonJob,
+  requestId: string,
+  person: Person | null,
+): Promise<void> {
+  const request = await deps.requests.request(requestId);
+  if (person?.role !== "owner" || !request || request.companyId !== person.companyId) {
+    await answer(deps, job, DECISION_TEXTS.noAccess);
+    return;
+  }
+  await answer(deps, job, "");
+  const messageId = await deps.requests.messageOf(requestId);
+  const ctx = messageId ? await deps.requests.cardContext(messageId) : null;
+  if (!ctx) throw new Error(`request ${requestId} has no message`);
+  const parts = splitForTelegram(ownerMessage(request.card, ctx));
+
+  if (request.status === "awaiting_owner") {
+    let cardMessageId = 0;
+    for (const [i, part] of parts.entries()) {
+      cardMessageId = await deps.telegram.send(
+        job.chatId,
+        part,
+        i === parts.length - 1 ? { buttons: decisionButtons(requestId) } : {},
+      );
+    }
+    await deps.requests.markOwnerNotified(requestId, [
+      { chatId: job.chatId, messageId: cardMessageId },
+    ]);
+    return;
+  }
+  const decision = await deps.requests.latestDecision(requestId);
+  const status = decision
+    ? `\n\n${decision.verdict === "approve" ? DECISION_TEXTS.approved : DECISION_TEXTS.rejected} · ${localTime(
+        decision.decidedAt.toISOString(),
+        ctx.timezone,
+      )}`
+    : "";
+  for (const [i, part] of parts.entries()) {
+    await deps.telegram.send(job.chatId, i === parts.length - 1 ? `${part}${status}` : part);
+  }
 }
 
 // A tap can be answered only once and only for a short while; a retried job may find it too

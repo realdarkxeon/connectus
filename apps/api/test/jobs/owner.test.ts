@@ -1,4 +1,10 @@
-import type { CardContext, SendOptions, StoredRequest } from "@connectus/adapters";
+import type {
+  CardContext,
+  ListItem,
+  ListKind,
+  SendOptions,
+  StoredRequest,
+} from "@connectus/adapters";
 import { beforeEach, describe, expect, it } from "vitest";
 import { handleOwnerMessage, type OwnerDeps } from "../../src/jobs/owner.ts";
 
@@ -33,6 +39,12 @@ class FakeRequests {
   cards = new Map<string, string>([[`${OWNER}:900`, REQ]]);
   companyOfRequest = "co-1";
   forwarded = new Set<string>();
+  listed: { companyId: string; kind: ListKind }[] = [];
+  async listRequests(companyId: string, kind: ListKind) {
+    this.listed.push({ companyId, kind });
+    const items: ListItem[] = [];
+    return { total: 0, items };
+  }
   async requestForOwnerCard(chatId: string, messageId: number) {
     return this.cards.get(`${chatId}:${messageId}`) ?? null;
   }
@@ -71,7 +83,8 @@ beforeEach(() => {
   requests = new FakeRequests();
   telegram = new FakeTelegram();
 });
-const deps = (): OwnerDeps => ({ requests, telegram });
+const clock = { now: () => new Date("2026-10-09T09:00:00Z") };
+const deps = (): OwnerDeps => ({ requests, telegram, clock });
 
 describe("owner replies to a card", () => {
   it("sends the owner's words to the PM, verbatim, as a reply to the PM's message", async () => {
@@ -128,5 +141,30 @@ describe("owner replies to a card", () => {
     requests.companyOfRequest = "co-2";
     await handleOwnerMessage(ownerMessage(), deps());
     expect(telegram.sent.map((m) => m.chatId)).toEqual([OWNER]);
+  });
+});
+
+describe("owner commands", () => {
+  it.each([
+    ["/pending", "pending", "Ждут решения: нет"],
+    ["/active", "active", "В работе: нет"],
+    ["/history", "history", "История: нет"],
+    ["/pending@connectus_staging_bot", "pending", "Ждут решения: нет"],
+  ] as const)("%s shows the %s list", async (command, kind, text) => {
+    await handleOwnerMessage(
+      ownerMessage({ text: command, replyToExternalMessageId: null }),
+      deps(),
+    );
+    expect(requests.listed).toEqual([{ companyId: "co-1", kind }]);
+    expect(telegram.sent).toEqual([{ chatId: OWNER, text, options: { buttons: [] } }]);
+  });
+
+  it("answers /start with the hint", async () => {
+    await handleOwnerMessage(
+      ownerMessage({ text: "/start", replyToExternalMessageId: null }),
+      deps(),
+    );
+    expect(requests.listed).toEqual([]);
+    expect(telegram.sent[0]?.text).toContain("Команды: /pending /active /history");
   });
 });

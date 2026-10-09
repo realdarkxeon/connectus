@@ -87,6 +87,16 @@ export class TelegramClient {
     });
   }
 
+  // The command menu shown in one chat only (owners see their commands, PMs see none).
+  async setChatCommands(
+    chatId: string,
+    commands: readonly { command: string; description: string }[],
+  ): Promise<void> {
+    await this.api.setMyCommands([...commands], {
+      scope: { type: "chat", chat_id: Number(chatId) },
+    });
+  }
+
   // Stops the loading spinner on a tapped button and shows a short notice.
   async answerButton(callbackQueryId: string, text: string): Promise<void> {
     await this.api.answerCallbackQuery(callbackQueryId, { text });

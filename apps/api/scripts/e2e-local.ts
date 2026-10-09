@@ -43,6 +43,7 @@ const copied: { chat_id: string; from_chat_id: string; message_id: number }[] = 
 const answered: { id: string; text: string }[] = [];
 const edited: { chat_id: string; message_id: number; text: string }[] = [];
 let nextMessageId = 1000;
+const menus: string[] = [];
 const fakeTelegram = createServer((req, res) => {
   let body = "";
   req.on("data", (chunk) => {
@@ -69,6 +70,10 @@ const fakeTelegram = createServer((req, res) => {
         message_id: params.message_id,
       });
       reply({ message_id: 2 });
+    } else if (url.endsWith("/setMyCommands")) {
+      const params = JSON.parse(body || "{}");
+      menus.push(String(params.scope?.chat_id));
+      reply(true);
     } else if (url.endsWith("/answerCallbackQuery")) {
       const params = JSON.parse(body || "{}");
       answered.push({ id: params.callback_query_id, text: params.text });
@@ -354,6 +359,31 @@ try {
     "owner got no 'получено'",
     !sent.some((m) => m.chat_id === String(OWNER_TELEGRAM_ID) && m.text === "получено"),
   );
+
+  // MVP S2: owner commands. The worker set the menu in the owner's chat at startup.
+  check(
+    "owner's command menu was set in the owner's chat",
+    menus.includes(String(OWNER_TELEGRAM_ID)),
+  );
+  const pendingCommand = update(OWNER_TELEGRAM_ID, { text: "/pending" });
+  pendingCommand.update_id += 30;
+  pendingCommand.message.message_id += 30;
+  await knock(pendingCommand, SECRET);
+  const list = await waitFor(async () =>
+    sent.find((m) => m.chat_id === String(OWNER_TELEGRAM_ID) && m.text.startsWith("Ждут решения")),
+  );
+  check(
+    `/pending lists what waits (${list?.text.split("\n")[0] ?? "nothing"})`,
+    list !== undefined,
+  );
+  const before = sent.length;
+  await knock(tap(OWNER_TELEGRAM_ID, "CBQ-E2E-3", `o:${requestId}`), SECRET);
+  const reopened = await waitFor(async () =>
+    sent
+      .slice(before)
+      .find((m) => m.chat_id === String(OWNER_TELEGRAM_ID) && m.text.includes("✅ Одобрено ·")),
+  );
+  check("tapping a number re-opens the card with its decision", reopened !== undefined);
 } finally {
   for (const child of children) child.kill("SIGTERM");
   fakeTelegram.close();

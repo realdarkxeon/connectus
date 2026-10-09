@@ -43,6 +43,15 @@ class FakeRequests {
   storedCard: Card | null = card;
   pmNotified = false;
   forbidden = false;
+  status: "awaiting_owner" | "in_progress" | "rejected" = "in_progress";
+  companyOfRequest = "co-1";
+  receipts: { chatId: string; messageId: number }[][] = [];
+  async latestDecision() {
+    return this.decision ? { verdict: this.decision.verdict, decidedAt: this.decision.at } : null;
+  }
+  async markOwnerNotified(_id: string, cards: { chatId: string; messageId: number }[]) {
+    this.receipts.push(cards);
+  }
 
   async personByTelegram(id: string) {
     return this.people.get(id) ?? null;
@@ -67,7 +76,12 @@ class FakeRequests {
     };
   }
   async request() {
-    return { id: REQ, companyId: "co-1", status: "in_progress" as const, card: this.storedCard };
+    return {
+      id: REQ,
+      companyId: this.companyOfRequest,
+      status: this.status,
+      card: this.storedCard,
+    };
   }
   async messageOf() {
     return "msg-1";
@@ -97,7 +111,7 @@ class FakeTelegram {
   }
   async send(chatId: string, text: string, options: SendOptions = {}) {
     this.sent.push({ chatId, text, options });
-    return 1;
+    return 777;
   }
 }
 
@@ -181,5 +195,41 @@ describe("button job: decisions", () => {
     await handleButton(tap(encodeButton("approve", REQ)), deps());
     expect(telegram.sent[0]?.text).toBe("✅ Владелец одобрил ваше сообщение");
     expect(telegram.edits[0]?.text).toContain("«арматуры не хватает»");
+  });
+});
+
+describe("button job: open a card from a list", () => {
+  it("re-sends a pending card with its decision buttons and records it", async () => {
+    requests.status = "awaiting_owner";
+    await handleButton(tap(encodeButton("open", REQ)), deps());
+    expect(telegram.answers).toHaveLength(1);
+    expect(telegram.sent[0]?.chatId).toBe("1233584354");
+    expect(telegram.sent[0]?.text).toContain("Докупить арматуру");
+    expect(telegram.sent[0]?.options.buttons?.[0]?.map((b) => b.text)).toEqual([
+      "✅ Одобрить",
+      "❌ Отклонить",
+    ]);
+    expect(requests.receipts).toEqual([[{ chatId: "1233584354", messageId: 777 }]]);
+  });
+
+  it("shows a decided card with its decision and no buttons", async () => {
+    requests.decision = { verdict: "reject", at: DECIDED_AT };
+    requests.status = "rejected";
+    await handleButton(tap(encodeButton("open", REQ)), deps());
+    expect(telegram.sent[0]?.text.endsWith("❌ Отклонено · пт 09.10, 14:05")).toBe(true);
+    expect(telegram.sent[0]?.options.buttons).toBeUndefined();
+  });
+
+  it("refuses to open another company's card", async () => {
+    requests.companyOfRequest = "co-2";
+    await handleButton(tap(encodeButton("open", REQ)), deps());
+    expect(telegram.answers.map((a) => a.text)).toEqual(["Нет доступа"]);
+    expect(telegram.sent).toHaveLength(0);
+  });
+
+  it("refuses a PM opening cards", async () => {
+    await handleButton(tap(encodeButton("open", REQ), "401614622"), deps());
+    expect(telegram.answers.map((a) => a.text)).toEqual(["Нет доступа"]);
+    expect(telegram.sent).toHaveLength(0);
   });
 });

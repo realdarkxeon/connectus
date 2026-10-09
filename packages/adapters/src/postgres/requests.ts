@@ -40,6 +40,34 @@ const OWNER_REPLIED = "owner_replied";
 
 export type Verdict = "approve" | "reject";
 export type Person = { personId: string; companyId: string; role: "owner" | "deputy" | "pm" };
+export type ListKind = "pending" | "active" | "history";
+export type ListItem = {
+  id: string;
+  status: RequestStatus;
+  type: Card["type"] | null;
+  summary: string | null; // null when there is no card
+  text: string | null; // the PM's message, for requests without a card
+  amountKzt: number | null;
+  decideBy: Date | null;
+  createdAt: Date;
+  pmName: string;
+  verdict: Verdict | null;
+  decidedAt: Date | null;
+  replied: boolean; // the owner already answered by replying to the card
+};
+
+// What each owner list shows, and in what order (MVP S2 commands).
+const LISTS: Record<ListKind, { where: string; order: string }> = {
+  // Safety first, then the nearest deadline, then the oldest.
+  pending: {
+    where: "r.status = 'awaiting_owner'",
+    order:
+      "coalesce(r.type = 'safety_incident', false) desc, r.decide_by asc nulls last, r.created_at asc",
+  },
+  active: { where: "r.status = 'in_progress'", order: "d.decided_at desc" },
+  history: { where: "d.verdict is not null", order: "d.decided_at desc" },
+};
+
 export type DecisionResult =
   | { outcome: "decided" | "already"; verdict: Verdict; status: RequestStatus; decidedAt: Date }
   | { outcome: "forbidden" };
@@ -278,6 +306,26 @@ export class PostgresRequestRepo {
     });
   }
 
+  async latestDecision(requestId: string): Promise<{ verdict: Verdict; decidedAt: Date } | null> {
+    const res = await this.pool.query<{ verdict: Verdict; decidedAt: Date }>(
+      `select verdict, decided_at as "decidedAt" from public.decision
+       where request_id = $1 and verdict in ('approve', 'reject')
+       order by decided_at desc limit 1`,
+      [requestId],
+    );
+    return res.rows[0] ?? null;
+  }
+
+  // Every owner's Telegram chat, all companies: the worker registers their command menu.
+  async allOwnerChats(): Promise<string[]> {
+    const res = await this.pool.query<{ external_id: string }>(
+      `select ci.external_id from public.channel_identity ci
+       join public.person p on p.company_id = ci.company_id and p.id = ci.person_id
+       where ci.channel = 'telegram' and p.role = 'owner'`,
+    );
+    return res.rows.map((r) => r.external_id);
+  }
+
   // MVP: one message per request, so this is that message.
   async messageOf(requestId: string): Promise<string | null> {
     const res = await this.pool.query<{ id: string }>(
@@ -337,6 +385,48 @@ export class PostgresRequestRepo {
         [ownerMessageId, requestId],
       );
     });
+  }
+
+  // One of the owner's lists, newest decisions or most urgent first, at most `limit` items.
+  async listRequests(
+    companyId: string,
+    kind: ListKind,
+    limit = 10,
+  ): Promise<{ total: number; items: ListItem[] }> {
+    const { where, order } = LISTS[kind];
+    const from = `
+      from public.request r
+      join public.person p on p.company_id = r.company_id and p.id = r.pm_id
+      left join lateral (
+        select verdict, decided_at from public.decision
+        where request_id = r.id and verdict in ('approve', 'reject')
+        order by decided_at desc limit 1
+      ) d on true
+      where r.company_id = $1 and ${where}`;
+    const total = await this.pool.query<{ n: number }>(`select count(*)::int as n ${from}`, [
+      companyId,
+    ]);
+    const rows = await this.pool.query<ListItem & { amountKzt: string | null }>(
+      `select r.id, r.status, r.type, r.card->>'summary' as summary,
+              (select m.text from public.message m where m.request_id = r.id
+               order by m.received_at limit 1) as text,
+              r.amount_kzt as "amountKzt", r.decide_by as "decideBy", r.created_at as "createdAt",
+              p.display_name as "pmName", d.verdict, d.decided_at as "decidedAt",
+              exists (select 1 from public.event e
+                      where e.request_id = r.id and e.type = '${OWNER_REPLIED}') as replied
+       ${from}
+       order by ${order}
+       limit $2`,
+      [companyId, limit],
+    );
+    return {
+      total: total.rows[0]?.n ?? 0,
+      // bigint arrives as text; KZT amounts are safe integers (hard rule 5).
+      items: rows.rows.map((r) => ({
+        ...r,
+        amountKzt: r.amountKzt === null ? null : Number(r.amountKzt),
+      })),
+    };
   }
 
   // Telegram chats of the company's owners. MVP: owners only (deputies come later).

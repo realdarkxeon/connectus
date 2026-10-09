@@ -59,3 +59,20 @@ export const OWNER_TEXTS = {
   replySent: "📨 Отправлено ПМ",
   hint: "Чтобы ответить ПМ, ответьте (Reply) на его карточку. Команды: /pending /active /history",
 } as const;
+
+// Owner commands and their lists (MVP S2). Approved by Darkhan 2026-10-09.
+export const LIST_TEXTS = {
+  commands: [
+    { command: "pending", description: "Ждут решения" },
+    { command: "active", description: "В работе" },
+    { command: "history", description: "История" },
+  ],
+  titles: { pending: "Ждут решения", active: "В работе", history: "История" },
+  none: "нет",
+  shown: "показаны первые",
+  until: "до",
+  noText: "(без текста)",
+  minutes: "мин",
+  hours: "ч",
+  days: "д",
+} as const;
