@@ -174,6 +174,14 @@ describe("PostgresRequestRepo", () => {
     });
   });
 
+  it("marks a message with no text as failed without an AI call, once", async () => {
+    const requestId = await repo.openRequest(await newMessage(null));
+    await repo.markCardFailed(requestId, "no_text");
+    await repo.markCardFailed(requestId, "no_text");
+    expect(await repo.request(requestId)).toMatchObject({ status: "awaiting_owner" });
+    expect((await events(requestId)).map((e) => e.type)).toEqual(["window_closed", "card_failed"]);
+  });
+
   it("remembers that the owner was notified (the delivery receipt)", async () => {
     const requestId = await repo.openRequest(await newMessage());
     expect(await repo.wasOwnerNotified(requestId)).toBe(false);

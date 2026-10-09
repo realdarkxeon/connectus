@@ -32,4 +32,5 @@ export const CARD_TEXTS = {
     workStopped: "остановлены ли работы",
   } as Record<string, string>,
   failedHeader: "⚠️ Не удалось разобрать автоматически",
+  noText: "(без текста, оригинал ниже)",
 } as const;

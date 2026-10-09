@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/app.ts";
-import { loadConfig, serverSchema, webhookUrl } from "../src/config.ts";
+import { loadConfig, serverSchema, webhookUrl, workerSchema } from "../src/config.ts";
 
 describe("reception app", () => {
   it("answers the health check", async () => {
@@ -67,5 +67,28 @@ describe("webhookUrl", () => {
       RAILWAY_PUBLIC_DOMAIN: "ignored.up.railway.app",
     });
     expect(webhookUrl(config)).toBe("https://bot.example.kz/telegram/webhook");
+  });
+});
+
+describe("worker config", () => {
+  const workerEnv = {
+    ...validEnv,
+    SUPABASE_URL: "http://127.0.0.1:54321",
+    SUPABASE_SECRET_KEY: "s".repeat(40),
+  };
+
+  it("runs locally without an Anthropic key (cards fall back to raw text)", () => {
+    expect(loadConfig(workerSchema, workerEnv).ANTHROPIC_API_KEY).toBeUndefined();
+  });
+
+  it("refuses to start on staging without an Anthropic key, naming only the variable", () => {
+    expect(() => loadConfig(workerSchema, { ...workerEnv, APP_ENV: "staging" })).toThrow(
+      "Invalid or missing environment variables: ANTHROPIC_API_KEY",
+    );
+  });
+
+  it("uses Haiku 4.5 for cards unless told otherwise", () => {
+    const config = loadConfig(workerSchema, { ...workerEnv, ANTHROPIC_API_KEY: "k".repeat(40) });
+    expect(config.CARD_MODEL).toBe("claude-haiku-4-5");
   });
 });

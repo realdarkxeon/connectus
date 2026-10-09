@@ -32,13 +32,22 @@ export const serverSchema = z.object({
 });
 export type ServerConfig = z.infer<typeof serverSchema>;
 
-export const workerSchema = z.object({
-  ...base,
-  ...telegram,
-  SUPABASE_URL: z.url(),
-  // Server only: bypasses RLS. Never in the Mini App or any client.
-  SUPABASE_SECRET_KEY: z.string().min(20),
-});
+export const workerSchema = z
+  .object({
+    ...base,
+    ...telegram,
+    SUPABASE_URL: z.url(),
+    // Server only: bypasses RLS. Never in the Mini App or any client.
+    SUPABASE_SECRET_KEY: z.string().min(20),
+    // Card extraction. Required on staging and production; locally it may be unset, and
+    // then every card falls back to the raw message (hard rule 1 still holds).
+    ANTHROPIC_API_KEY: z.string().min(20).optional(),
+    CARD_MODEL: z.string().default("claude-haiku-4-5"),
+  })
+  .refine((c) => c.APP_ENV === "local" || c.ANTHROPIC_API_KEY !== undefined, {
+    path: ["ANTHROPIC_API_KEY"],
+    message: "required outside local",
+  });
 export type WorkerConfig = z.infer<typeof workerSchema>;
 
 export function loadConfig<T extends z.ZodType>(schema: T, env: NodeJS.ProcessEnv): z.infer<T> {

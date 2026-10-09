@@ -173,6 +173,23 @@ export class PostgresRequestRepo {
     });
   }
 
+  // No AI call was possible (e.g. a voice note with no text yet): straight to the owner as
+  // raw content. Safe to run twice.
+  async markCardFailed(requestId: string, reason: string): Promise<void> {
+    await this.inTransaction(async (client) => {
+      const res = await client.query<{ company_id: string; status: RequestStatus }>(
+        "select company_id, status from public.request where id = $1 for update",
+        [requestId],
+      );
+      const r = res.rows[0];
+      if (!r) throw new Error(`request ${requestId} not found`);
+      if (r.status !== "structuring") return;
+      await this.move(client, requestId, r.company_id, "structuring", [
+        { type: "card_failed", reason },
+      ]);
+    });
+  }
+
   async wasOwnerNotified(requestId: string): Promise<boolean> {
     const res = await this.pool.query(
       "select 1 from public.event where request_id = $1 and type = $2 limit 1",
