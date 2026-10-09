@@ -66,6 +66,16 @@ export class TelegramClient {
     return sent.message_id;
   }
 
+  // A link that opens a chat with this user, or null if none would work. A username link
+  // (t.me) opens for anyone. Without a username, tg://user?id links open only if the user's
+  // privacy allows it (has_private_forwards unset). Works for anyone who wrote to the bot.
+  async profileUrl(userId: string): Promise<string | null> {
+    const chat = await this.api.getChat(userId);
+    if (chat.type !== "private") return null;
+    if (chat.username) return `https://t.me/${chat.username}`;
+    return chat.has_private_forwards ? null : `tg://user?id=${userId}`;
+  }
+
   // Replaces a message's text and buttons (no buttons: they disappear).
   async edit(chatId: string, messageId: number, text: string, buttons?: Button[][]): Promise<void> {
     await this.api.editMessageText(chatId, messageId, text, {

@@ -88,6 +88,11 @@ class FakeTelegram {
   copies: { to: string; from: string; messageId: number }[] = [];
   failNextSend = false;
   refuseLinks = false;
+  profile: string | null | Error = "https://t.me/serik_pm";
+  async profileUrl(_userId: string) {
+    if (this.profile instanceof Error) throw this.profile;
+    return this.profile;
+  }
   private nextId = 500;
   async send(chatId: string, text: string, options: SendOptions = {}) {
     if (this.failNextSend) {
@@ -165,8 +170,23 @@ describe("card job", () => {
     await handleCard({ messageId: "msg-1" }, deps(extractor));
     const { text, options } = telegram.sent[0] ?? { text: "", options: {} };
     const link = options.link;
-    expect(link?.url).toBe("tg://user?id=401614622");
+    expect(link?.url).toBe("https://t.me/serik_pm");
     expect(link && text.slice(link.offset, link.offset + link.length)).toBe("Серик");
+  });
+
+  it("sends no link when the PM's chat cannot be opened (no username, private)", async () => {
+    telegram.profile = null;
+    const { extractor } = fakeExtractor();
+    await handleCard({ messageId: "msg-1" }, deps(extractor));
+    expect(telegram.sent[0]?.options.link).toBeUndefined();
+  });
+
+  it("still sends the card if looking up the PM's profile fails", async () => {
+    telegram.profile = new Error("telegram down");
+    const { extractor } = fakeExtractor();
+    await handleCard({ messageId: "msg-1" }, deps(extractor));
+    expect(telegram.sent).toHaveLength(1);
+    expect(telegram.sent[0]?.options.link).toBeUndefined();
   });
 
   it("sends the card without the link if Telegram refuses the link", async () => {

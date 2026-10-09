@@ -26,6 +26,7 @@ export type CardDeps = {
   telegram: {
     send(chatId: string, text: string, options?: SendOptions): Promise<number>;
     copy(toChatId: string, fromChatId: string, messageId: number): Promise<void>;
+    profileUrl(userId: string): Promise<string | null>;
   };
   extractor: CardExtractor;
   clock: Clock;
@@ -67,20 +68,18 @@ export async function handleCard(job: CardJob, deps: CardDeps): Promise<void> {
 
   const text = ownerMessage(request.card, ctx);
   const original = parseTelegramMessageId(ctx.externalMessageId);
-  // The PM's name links to their Telegram chat (in a private chat, the chat id is the user id).
+  // The PM's name links to their Telegram chat (in a private chat, the chat id is the user
+  // id). No link when none would open; a failed lookup never stops the card.
+  const url = await deps.telegram.profileUrl(original.chatId).catch(() => null);
   const nameAt = text.indexOf(`${CARD_TEXTS.from}: `) + CARD_TEXTS.from.length + 2;
-  const link = {
-    offset: nameAt,
-    length: ctx.sender.name.length,
-    url: `tg://user?id=${original.chatId}`,
-  };
+  const link = url ? { offset: nameAt, length: ctx.sender.name.length, url } : undefined;
   const parts = splitForTelegram(text);
   const cards: OwnerCardRef[] = [];
   for (const chatId of owners) {
     let cardMessageId = 0;
     for (const [i, part] of parts.entries()) {
       const options: SendOptions = {
-        ...(i === 0 && link.offset + link.length <= part.length && { link }),
+        ...(i === 0 && link && link.offset + link.length <= part.length && { link }),
         ...(i === parts.length - 1 && { buttons: decisionButtons(requestId) }),
       };
       cardMessageId = await sendWithLinkFallback(deps, chatId, part, options);
