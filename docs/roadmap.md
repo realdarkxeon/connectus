@@ -45,6 +45,22 @@ Discovery track (Darkhan with owner) and build track run in parallel.
 Gate to Sprint 1: golden set labelled, taxonomy + rubric agreed, staging bot stores
 messages reliably, `pnpm eval` prints numbers.
 
+## MVP track (branch mvp, staging deploys it)
+A maximally simplified loop to put in front of one real PM fast, decided 2026-10-09.
+Cut for now: grouping, triage/lanes, clarifying questions, photo descriptions, done-with-
+photo, WhatsApp, Mini App, owner rules (docs/decisions.md).
+
+- [x] S1. PM message -> card (or raw message) -> owner. Voice/photo copied as the original.
+      Prompt extract.v3 (alsoMentioned: nothing dropped). Live on staging 2026-10-09
+- [x] S2. Owner: ✅/❌ buttons (first tap wins; PM told once; decided card leaves the chat),
+      reply to a card -> PM verbatim, /pending /active /history, PM name links to t.me.
+      Live on staging 2026-10-09
+- [ ] S3. Voice notes -> text -> real cards. Pick a speech-to-text provider (2-3 options
+      with prices first)
+- [ ] S4. Add a PM with one command; attach their waiting-room messages
+- [ ] S5. Pilot-ready: Railway Hobby + sleepApplication false, production bot, Sentry,
+      consent form, one real PM for a week
+
 ## Next: Sprint 1 (M1)
 Message grouping, media worker, site resolution, structurer with prompt v1, completeness
 question loop, plain card to owner, eval run in CI.

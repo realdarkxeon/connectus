@@ -92,6 +92,21 @@ New terms are added at the end of each step.
 | Tokens and cost | The AI is billed per piece of text in and out; we record it on every call (the invoice). | `packages/adapters/src/claude/pricing.ts` | ★ | [Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pricing) |
 | Prompt version | Prompts are numbered files; a change needs before/after eval numbers. | `packages/adapters/src/claude/prompts/` | ★★ | `CLAUDE.md`, hard rule 8 |
 
+## 7. The MVP loop: cards, decisions, replies (S1, S2)
+
+| Term | Plain meaning | In our code | Depth | Dig deeper |
+|---|---|---|---|---|
+| At-least-once job | A queued job may run twice (crash before "done"), so every job must be safe to repeat. | every job in `apps/api/src/jobs/` | ★★ | [pg-boss](https://pgboss.io/) |
+| Delivery receipt | A logbook entry written right after sending ("owner_notified", "pm_notified", "owner_replied"); a retry checks it and does not send twice. | `packages/adapters/src/postgres/requests.ts` | ★★ | lesson in `HOMEWORK.md` (lesson 8) |
+| First tap wins | A decision is recorded only while the request waits for the owner; later taps change nothing and say "Уже одобрено". | `decide()` in `requests.ts` | ★★ | `docs/decisions.md` |
+| Inline button / callback | A button under a bot message; tapping it sends our short code back (`a:`, `r:`, `o:` + request id). | `apps/api/src/buttons.ts` | ★ | [Telegram: inline keyboards](https://core.telegram.org/bots/features#inline-keyboards) |
+| Authorization check | Checking who tapped against our own records, never trusting the button itself. | `handleButton` in `jobs/button.ts` | ★★ | [OWASP: broken access control](https://owasp.org/Top10/A01_2021-Broken_Access_Control/) |
+| Raw-text fallback | When no card can be made, the owner gets the PM's own words (hard rule 1). | `card_failed` move, `formatRawFallback` | ★★ | `CLAUDE.md`, hard rule 1 |
+| Drift | The real infrastructure differs from the config file (our restart policy was missing). A plan shows it before you apply. | `railway config plan` | ★★ | [Railway IaC](https://docs.railway.com/infrastructure-as-code) |
+| Shared variable | A secret set once per environment in Railway and referenced by services, instead of a copy on each service. | `ctx.shared.ANTHROPIC_API_KEY` in `.railway/railway.ts` | ★ | [Railway variables](https://docs.railway.com/variables) |
+| GIN index | An index for searching inside JSON (and arrays); ours finds the request behind a card fast. | `event_owner_card_idx` migration | ★ | [Postgres: JSON indexing](https://www.postgresql.org/docs/current/datatype-json.html#JSON-INDEXING) |
+| Least privilege | Give each part only the access it needs: only the worker has the AI key; the AI gets "ПМ", not the PM's name. | `railway.ts`, `jobs/card.ts` | ★★ | [Principle of least privilege](https://en.wikipedia.org/wiki/Principle_of_least_privilege) |
+
 ## Libraries we use (one line each)
 
 - **Hono**: the web server in reception. [docs](https://hono.dev/docs/)

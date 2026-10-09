@@ -5,7 +5,8 @@ messages (voice, photos, text, docs) to a bot; the system turns them into decisi
 cards, triages them, and gives the site owner a short, prioritized feed where he
 decides with one tap or a voice reply. Decisions flow back to PMs and are audit-logged.
 
-Status: Iteration 3 (discovery + foundation). See docs/roadmap.md for the current step.
+Status: simplified MVP on branch `mvp` (S1, S2 done; staging deploys mvp), alongside
+Iteration 3 discovery. See docs/roadmap.md ("MVP track") for the current step.
 
 ## Read on demand (not loaded automatically, open when relevant)
 - docs/product.md: users, flow, lanes, features, what is out of scope

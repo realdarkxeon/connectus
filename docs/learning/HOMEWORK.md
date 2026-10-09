@@ -97,6 +97,32 @@ then undo with `git checkout -- <file>`. Never commit these changes.
   `git checkout -- packages/adapters/src/claude/extract.ts`.
   *Done when:* you can name one failing test and why it failed.
 
+## Lesson 8: a job can run twice (MVP S1)
+
+- [ ] **Explain-back.** Why is the "owner notified" receipt written right *after* sending, not
+  before? What does the owner see in the rare crash between the two?
+  *Done when:* your answer says "one duplicate, never a lost card".
+- [ ] **Break it safely.** In `apps/api/src/jobs/card.ts`, delete the line
+  `if (await deps.requests.wasOwnerNotified(requestId)) return;`, run `pnpm test`, note the
+  failing test, undo with `git checkout -- apps/api/src/jobs/card.ts`.
+  *Done when:* you can name the test and why it failed.
+- [ ] **Read the logbook.** In the Supabase dashboard (staging), open `event` and find one
+  request's rows in order. *Done when:* you can read its story: window_closed ->
+  card_complete -> routed_to_owner -> owner_notified -> owner_approved -> pm_notified.
+
+## Lesson 9: one decision, many taps (MVP S2)
+
+- [ ] **Explain-back.** The owner taps ✅ then ❌. What does the database do with the second
+  tap, and why is that the right rule for a construction site?
+  *Done when:* you mention the PM who may already have ordered the rebar.
+- [ ] **Security.** Someone forwards an owner's card to a PM, and the PM taps ✅. What stops
+  it? Find the check in `apps/api/src/jobs/button.ts`.
+  *Done when:* you can point to the line and say what it compares.
+- [ ] **Your own idea, measured.** Your two-issue message became practice case p12. Open
+  `packages/evals/data/practice.v3.json` and read its `mustMention`.
+  *Done when:* you can say what the "Nothing dropped" row would show if the AI forgot the
+  sick worker.
+
 ## Optional: go deeper
 
 Pick any ★★ term from `GLOSSARY.md` and read its "Dig deeper" link for 15 minutes. Bring
