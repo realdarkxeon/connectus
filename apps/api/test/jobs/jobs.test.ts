@@ -123,8 +123,22 @@ describe("unrouted job", () => {
       channel: "telegram",
       externalMessageId: "777:3",
       externalUserId: "777",
+      senderName: "Незнакомец",
+      text: "здравствуйте",
     });
-    await handleUnrouted({ unroutedId: "u-1" }, { messages, telegram });
+    await handleUnrouted(
+      { unroutedId: "u-1" },
+      {
+        messages,
+        telegram,
+        team: {
+          redeemInvite: async () => {
+            throw new Error("not an invite");
+          },
+        },
+        owners: { ownerChats: async () => [] },
+      },
+    );
 
     expect(telegram.replies).toEqual([{ chatId: "777", text: TEXTS.notConnected, replyTo: 3 }]);
   });

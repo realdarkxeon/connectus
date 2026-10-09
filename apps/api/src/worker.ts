@@ -9,6 +9,7 @@ import {
   type MediaJob,
   PostgresMessageRepo,
   PostgresRequestRepo,
+  PostgresTeamRepo,
   postgresConnection,
   QUEUES,
   SupabaseMediaStorage,
@@ -55,6 +56,7 @@ const stt: SpeechToText | undefined = config.SONIOX_API_KEY
   ? createSonioxStt({ apiKey: config.SONIOX_API_KEY, timeoutMs: 120_000 })
   : undefined;
 const requests = new PostgresRequestRepo(pool, clock);
+const team = new PostgresTeamRepo(pool, boss, clock);
 // Locally without a key, every card falls back to the raw message (config.ts).
 const extractor: CardExtractor = config.ANTHROPIC_API_KEY
   ? createAnthropicExtractor(config.CARD_MODEL)
@@ -108,7 +110,9 @@ await boss.work<MediaJob>(
 );
 await boss.work<UnroutedJob>(
   QUEUES.unrouted,
-  worker<UnroutedJob>(QUEUES.unrouted, (data) => handleUnrouted(data, { messages, telegram })),
+  worker<UnroutedJob>(QUEUES.unrouted, (data) =>
+    handleUnrouted(data, { messages, telegram, team, owners: requests }),
+  ),
 );
 await boss.work<CardJob>(
   QUEUES.card,

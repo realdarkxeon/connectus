@@ -76,3 +76,23 @@ export const LIST_TEXTS = {
   hours: "ч",
   days: "д",
 } as const;
+
+// Team management (MVP S4). Approved by Darkhan 2026-10-09.
+export const TEAM_TEXTS = {
+  // To the person joining.
+  joined: "✅ Вы подключены к ConnectUS. Пишите или говорите голосом — владелец получит карточку.",
+  alreadyMember: "Вы уже подключены. Просто пишите или говорите голосом.",
+  inviteUsed: "Эта ссылка уже использована. Попросите у владельца новую.",
+  inviteExpired: "Срок ссылки истёк. Попросите у владельца новую.",
+  inviteInvalid: "Ссылка не найдена. Попросите у владельца новую.",
+  // To the owner.
+  ownerJoined: (name: string) => `👷 ${name} присоединился.`,
+  inviteLink: (url: string) =>
+    `Отправьте эту ссылку новому ПМ:\n${url}\n\nОна для одного человека и действует 7 дней.`,
+  teamTitle: "Команда",
+  noPms: "ПМ пока нет. Пригласите первого:",
+  noSite: "без объекта",
+  invite: "➕ Пригласить ПМ",
+  sites: "🏗 Объекты",
+  pmPage: "👷 Открыть",
+} as const;

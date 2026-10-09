@@ -4,6 +4,7 @@ export * from "./postgres/connection.ts";
 export * from "./postgres/intake.ts";
 export * from "./postgres/messages.ts";
 export * from "./postgres/requests.ts";
+export * from "./postgres/team.ts";
 export * from "./queues.ts";
 export * from "./site-keyterms.ts";
 export * from "./soniox/stt.ts";

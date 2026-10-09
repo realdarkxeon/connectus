@@ -18,7 +18,7 @@ import type {
 import { decisionButtons } from "../buttons.ts";
 import { log } from "../log.ts";
 import { ownerMessage, splitForTelegram } from "../owner-card.ts";
-import { CARD_TEXTS } from "../texts.ts";
+import { CARD_TEXTS, TEAM_TEXTS } from "../texts.ts";
 
 export type CardDeps = {
   requests: {
@@ -56,6 +56,14 @@ export async function handleCard(job: CardJob, deps: CardDeps): Promise<void> {
   if (!ctx) throw new Error(`message ${job.messageId} not found`);
   if (ctx.sender.role === "owner") return deps.ownerMessage(ctx);
   if (ctx.sender.role !== "pm") return; // deputies come later
+
+  // "/start" (Telegram's Start button, or an invite tapped by someone already connected) is
+  // not a request: a short answer, no card.
+  if (ctx.text?.trim().startsWith("/start")) {
+    const pm = parseTelegramMessageId(ctx.externalMessageId);
+    await deps.telegram.send(pm.chatId, TEAM_TEXTS.alreadyMember, { replyTo: pm.messageId });
+    return;
+  }
 
   const requestId = await deps.requests.openRequest(ctx.messageId);
   let request = await deps.requests.request(requestId);

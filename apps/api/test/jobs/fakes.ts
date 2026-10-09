@@ -39,6 +39,10 @@ export class FakeTelegram {
   async reply(chatId: string, text: string, replyTo?: number) {
     this.replies.push({ chatId, text, replyTo });
   }
+  async send(chatId: string, text: string) {
+    this.replies.push({ chatId, text, replyTo: undefined });
+    return 1;
+  }
   async download(fileId: string) {
     this.downloads.push(fileId);
     return this.file;

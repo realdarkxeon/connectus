@@ -18,6 +18,8 @@ export type UnroutedMessage = {
   channel: Channel;
   externalMessageId: string;
   externalUserId: string;
+  senderName: string | null;
+  text: string | null;
 };
 
 // Reads and small updates the worker needs. The server connection bypasses RLS, so every
@@ -54,7 +56,7 @@ export class PostgresMessageRepo {
   async findUnrouted(id: string): Promise<UnroutedMessage | null> {
     const res = await this.pool.query<UnroutedMessage>(
       `select id, channel, external_message_id as "externalMessageId",
-              external_user_id as "externalUserId"
+              external_user_id as "externalUserId", sender_name as "senderName", text
        from private.unrouted_message where id = $1`,
       [id],
     );

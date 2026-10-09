@@ -350,6 +350,21 @@ describe("card job", () => {
     expect(telegram.copies).toHaveLength(1);
   });
 
+  it("answers a connected PM's /start (e.g. a tapped invite) without making a card", async () => {
+    requests.ctx = context({ text: "/start i_AbCdEfGhIjKlMnOpQrStUv" });
+    const { extractor, inputs } = fakeExtractor();
+    await handleCard({ messageId: "msg-1" }, deps(extractor));
+    expect(inputs).toHaveLength(0);
+    expect(requests.req).toBeNull();
+    expect(telegram.sent).toEqual([
+      {
+        chatId: "401614622",
+        text: "Вы уже подключены. Просто пишите или говорите голосом.",
+        options: { replyTo: 57 },
+      },
+    ]);
+  });
+
   it("hands a message from the owner to the owner handler, without a card", async () => {
     requests.ctx = context({ sender: { personId: "o-1", role: "owner", name: "Владелец" } });
     const { extractor, inputs } = fakeExtractor();
