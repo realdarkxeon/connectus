@@ -9,6 +9,8 @@ export type Expected = {
   decideBy: string | null;
   workStopped: boolean | null;
   missing: string[];
+  // Word stems that must appear on the card (summary or alsoMentioned): no issue dropped.
+  mustMention: string[];
 };
 
 export type Checks = {
@@ -17,6 +19,7 @@ export type Checks = {
   deadline: boolean;
   workStopped: boolean;
   missing: boolean;
+  nothingDropped: boolean;
 };
 
 export type CaseResult = {
@@ -42,6 +45,11 @@ function sameSet(a: string[], b: string[]): boolean {
   return left.size === right.size && [...left].every((x) => right.has(x));
 }
 
+function mentionsAll(card: Card, stems: string[]): boolean {
+  const text = [card.summary, ...(card.alsoMentioned ?? [])].join(" ").toLowerCase();
+  return stems.every((stem) => text.includes(stem.toLowerCase()));
+}
+
 // `card` is null when the model gave no valid card (it counts as failing every check).
 export function scoreCase(id: string, want: Expected, card: Card | null): CaseResult {
   const expectedSafety = want.type === "safety_incident";
@@ -49,7 +57,14 @@ export function scoreCase(id: string, want: Expected, card: Card | null): CaseRe
     return {
       id,
       validCard: false,
-      checks: { type: false, amount: false, deadline: false, workStopped: false, missing: false },
+      checks: {
+        type: false,
+        amount: false,
+        deadline: false,
+        workStopped: false,
+        missing: false,
+        nothingDropped: false,
+      },
       inventedAmount: false,
       expectedSafety,
       predictedSafety: false,
@@ -67,6 +82,7 @@ export function scoreCase(id: string, want: Expected, card: Card | null): CaseRe
         want.missing,
         card.missing.map((m) => m.field),
       ),
+      nothingDropped: mentionsAll(card, want.mustMention),
     },
     inventedAmount: want.amountKzt === null && card.amountKzt !== null,
     expectedSafety,
@@ -101,6 +117,7 @@ export function summarize(results: CaseResult[]): Summary {
       deadline: row("deadline"),
       workStopped: row("workStopped"),
       missing: row("missing"),
+      nothingDropped: row("nothingDropped"),
     },
     safety: {
       caught: safetyCases.length - missed.length,

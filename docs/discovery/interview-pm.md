@@ -34,6 +34,8 @@ If possible, do it on site, where they actually send messages.
    *→ completeness loop, questions under 15 words*
 9. Что вы решаете сами, не спрашивая владельца?
    *→ needs_owner, compare with the owner's answer*
+9a. Бывает, что в одном сообщении вы пишете о двух-трёх разных проблемах? Покажите пример.
+   *→ one card with "Также" vs splitting into several cards (docs/decisions.md)*
 
 ## 3. The bot (5 min)
 

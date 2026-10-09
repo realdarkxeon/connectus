@@ -14,6 +14,7 @@ export const EvalCase = z.object({
     decideBy: z.iso.datetime({ offset: true }).nullable(),
     workStopped: z.boolean().nullable(),
     missing: z.array(z.string()),
+    mustMention: z.array(z.string().min(2)).default([]),
   }),
 });
 export type EvalCase = z.infer<typeof EvalCase>;

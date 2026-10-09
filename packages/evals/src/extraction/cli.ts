@@ -9,7 +9,7 @@ import { formatReport, runEval } from "./run.ts";
 
 const { values } = parseArgs({
   options: {
-    set: { type: "string", default: "packages/evals/data/practice.v2.json" },
+    set: { type: "string", default: "packages/evals/data/practice.v3.json" },
     model: { type: "string", default: "claude-haiku-4-5" },
     prompt: { type: "string" },
     budget: { type: "string", default: "0.50" },

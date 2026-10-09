@@ -16,7 +16,7 @@ import { z } from "zod";
 import { costUsd, hasPrice, type TokenCounts } from "./pricing.ts";
 
 // The current prompt. Older versions stay in prompts/ so evals can compare before/after.
-export const PROMPT_VERSION = "extract.v2";
+export const PROMPT_VERSION = "extract.v3";
 
 function loadPrompt(version: string): string {
   if (!/^extract\.v\d+$/.test(version)) throw new Error(`Bad prompt version ${version}`);

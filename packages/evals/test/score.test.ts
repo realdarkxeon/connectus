@@ -6,6 +6,7 @@ const card = (overrides: Partial<Card> = {}): Card => ({
   type: "spend_approval",
   siteHint: null,
   summary: "Докупить арматуру",
+  alsoMentioned: [],
   ask: "Одобрить 380 000 ₸?",
   options: [],
   amountKzt: 380000,
@@ -23,6 +24,7 @@ const expected = (overrides: Partial<Expected> = {}): Expected => ({
   decideBy: "2026-10-09T12:00:00+05:00",
   workStopped: null,
   missing: [],
+  mustMention: [],
   ...overrides,
 });
 
@@ -35,6 +37,7 @@ describe("scoreCase", () => {
       deadline: true,
       workStopped: true,
       missing: true,
+      nothingDropped: true,
     });
     expect(r.inventedAmount).toBe(false);
   });
@@ -68,6 +71,16 @@ describe("scoreCase", () => {
       scoreCase("p", expected(), card({ decideBy: "2026-10-09T18:00:00+05:00" })).checks.deadline,
     ).toBe(false);
     expect(scoreCase("p", expected(), card({ decideBy: null })).checks.deadline).toBe(false);
+  });
+
+  it("checks that every issue made it onto the card, in summary or alsoMentioned", () => {
+    const want = expected({ mustMention: ["лес", "плохо"] });
+    const both = card({ summary: "Леса шатаются", alsoMentioned: ["работнику плохо"] });
+    const dropped = card({ summary: "Леса шатаются", alsoMentioned: [] });
+    const inSummary = card({ summary: "Леса шатаются, работнику плохо", alsoMentioned: [] });
+    expect(scoreCase("p", want, both).checks.nothingDropped).toBe(true);
+    expect(scoreCase("p", want, inSummary).checks.nothingDropped).toBe(true);
+    expect(scoreCase("p", want, dropped).checks.nothingDropped).toBe(false);
   });
 
   it("compares missing fields as a set, ignoring order", () => {

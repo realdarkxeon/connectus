@@ -1,7 +1,7 @@
 {
   "name": "practice",
-  "version": 2,
-  "note": "Made up by Claude, reviewed by Darkhan. Proves the measuring tape works; says nothing about real quality. Replaced by the owner-labelled golden set (Step 5). v2 (2026-10-09): p06 and p10 workStopped null -> false (\"всё по плану\", \"кран работает\" mean work continues), decided by Darkhan.",
+  "version": 3,
+  "note": "Made up by Claude, reviewed by Darkhan. Proves the measuring tape works; says nothing about real quality. Replaced by the owner-labelled golden set (Step 5). v2 (2026-10-09): p06 and p10 workStopped null -> false (\"всё по плану\", \"кран работает\" mean work continues), decided by Darkhan. v3 (2026-10-09): p12 added, a two-issue message from Darkhan's live staging test; mustMention checks that no issue is dropped.",
   "context": {
     "now": "2026-10-08T10:00:00+05:00",
     "timezone": "Asia/Almaty",
@@ -23,7 +23,8 @@
         "amountKzt": 380000,
         "decideBy": "2026-10-09T12:00:00+05:00",
         "workStopped": null,
-        "missing": []
+        "missing": [],
+        "mustMention": []
       }
     },
     {
@@ -39,7 +40,8 @@
         "amountKzt": null,
         "decideBy": null,
         "workStopped": true,
-        "missing": []
+        "missing": [],
+        "mustMention": []
       }
     },
     {
@@ -57,7 +59,8 @@
         "amountKzt": null,
         "decideBy": null,
         "workStopped": false,
-        "missing": []
+        "missing": [],
+        "mustMention": []
       }
     },
     {
@@ -75,7 +78,8 @@
         "amountKzt": null,
         "decideBy": null,
         "workStopped": null,
-        "missing": []
+        "missing": [],
+        "mustMention": []
       }
     },
     {
@@ -91,7 +95,8 @@
         "amountKzt": null,
         "decideBy": null,
         "workStopped": null,
-        "missing": ["amountKzt"]
+        "missing": ["amountKzt"],
+        "mustMention": []
       }
     },
     {
@@ -107,7 +112,8 @@
         "amountKzt": null,
         "decideBy": null,
         "workStopped": false,
-        "missing": []
+        "missing": [],
+        "mustMention": []
       }
     },
     {
@@ -123,7 +129,8 @@
         "amountKzt": null,
         "decideBy": null,
         "workStopped": true,
-        "missing": []
+        "missing": [],
+        "mustMention": []
       }
     },
     {
@@ -139,7 +146,8 @@
         "amountKzt": 1200000,
         "decideBy": null,
         "workStopped": null,
-        "missing": []
+        "missing": [],
+        "mustMention": []
       }
     },
     {
@@ -160,7 +168,8 @@
         "amountKzt": 1800000,
         "decideBy": "2026-10-08T18:00:00+05:00",
         "workStopped": null,
-        "missing": []
+        "missing": [],
+        "mustMention": []
       }
     },
     {
@@ -176,7 +185,8 @@
         "amountKzt": null,
         "decideBy": null,
         "workStopped": false,
-        "missing": []
+        "missing": [],
+        "mustMention": []
       }
     },
     {
@@ -194,7 +204,27 @@
         "amountKzt": null,
         "decideBy": null,
         "workStopped": null,
-        "missing": []
+        "missing": [],
+        "mustMention": []
+      }
+    },
+    {
+      "id": "p12-two-issues",
+      "sender": {
+        "name": "PERSON_2",
+        "workPackage": "фасад",
+        "site": "ЖК Самал"
+      },
+      "messages": [
+        "Леса на секции Б шатаются, крепления ржавые, люди пока работают, одного работника думаем заменить, он сегодня чувствует себя плохо"
+      ],
+      "expected": {
+        "type": "safety_incident",
+        "amountKzt": null,
+        "decideBy": null,
+        "workStopped": false,
+        "missing": [],
+        "mustMention": ["лес", "плохо"]
       }
     }
   ]

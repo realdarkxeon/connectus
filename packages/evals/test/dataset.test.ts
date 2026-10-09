@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { EvalSet, loadEvalSet } from "../src/extraction/dataset.ts";
 
-const practicePath = new URL("../data/practice.v2.json", import.meta.url).pathname;
+const practicePath = new URL("../data/practice.v3.json", import.meta.url).pathname;
 
-describe("practice set v2", () => {
+describe("practice set v3", () => {
   it("is a valid eval set", async () => {
     const set = await loadEvalSet(practicePath);
     expect(set.cases.length).toBeGreaterThanOrEqual(10);

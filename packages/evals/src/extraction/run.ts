@@ -89,6 +89,7 @@ export function formatReport(run: EvalRun): string {
     `  Deadline         ${pct(s.rows.deadline)}`,
     `  Work stopped     ${pct(s.rows.workStopped)}`,
     `  Missing asks     ${pct(s.rows.missing)}`,
+    `  Nothing dropped  ${pct(s.rows.nothingDropped)}`,
     "",
     `  SAFETY caught    ${s.safety.caught}/${s.safety.total}` +
       (s.safety.missedIds.length ? `   MISSED: ${s.safety.missedIds.join(", ")}` : "") +
