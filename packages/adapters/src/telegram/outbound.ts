@@ -104,8 +104,17 @@ export class TelegramClient {
 
   // Copies a message (voice, photo, file) from one chat to another, without a "forwarded"
   // link. The owner gets the PM's original exactly as sent.
-  async copy(toChatId: string, fromChatId: string, messageId: number): Promise<void> {
-    await this.api.copyMessage(toChatId, fromChatId, messageId);
+  async copy(toChatId: string, fromChatId: string, messageId: number): Promise<number> {
+    const copied = await this.api.copyMessage(toChatId, fromChatId, messageId);
+    return copied.message_id;
+  }
+
+  // Deletes the bot's own messages in a chat. Telegram allows it only within 48 hours of
+  // sending, at most 100 ids per call.
+  async deleteMessages(chatId: string, messageIds: number[]): Promise<void> {
+    for (let i = 0; i < messageIds.length; i += 100) {
+      await this.api.deleteMessages(chatId, messageIds.slice(i, i + 100));
+    }
   }
 
   // Telegram guarantees the download link for at least 1 hour; bots can fetch up to 20 MB.

@@ -29,17 +29,19 @@ export type ButtonDeps = {
     markPmNotified(requestId: string): Promise<void>;
     latestDecision(requestId: string): Promise<{ verdict: Verdict; decidedAt: Date } | null>;
     markOwnerNotified(requestId: string, cards: OwnerCardRef[]): Promise<void>;
+    ownerCardMessages(requestId: string, chatId: string): Promise<number[]>;
   };
   telegram: {
     answerButton(callbackQueryId: string, text: string): Promise<void>;
     edit(chatId: string, messageId: number, text: string): Promise<void>;
+    deleteMessages(chatId: string, messageIds: number[]): Promise<void>;
     send(chatId: string, text: string, options?: SendOptions): Promise<number>;
   };
 };
 
 // The owner tapped a button (MVP S2). Who tapped is checked against our own records, never
 // trusted from the button. Every step is safe to repeat: the first decision wins, the card
-// edit is the same each time, and the PM's answer has its own receipt.
+// removal is the same each time, and the PM's answer has its own receipt.
 export async function handleButton(job: ButtonJob, deps: ButtonDeps): Promise<void> {
   const button = decodeButton(job.data);
   if (!button) return;
@@ -79,13 +81,23 @@ export async function handleButton(job: ButtonJob, deps: ButtonDeps): Promise<vo
   const ctx = messageId ? await deps.requests.cardContext(messageId) : null;
   if (!request || !ctx) throw new Error(`request ${button.requestId} has no message`);
 
-  // The tapped card shows the decision and loses its buttons.
-  const status = `${approved ? DECISION_TEXTS.approved : DECISION_TEXTS.rejected} · ${localTime(
-    result.decidedAt.toISOString(),
-    ctx.timezone,
-  )}`;
-  const cardText = splitForTelegram(ownerMessage(request.card, ctx)).at(-1) ?? "";
-  await editIgnoringUnchanged(deps, job, `${cardText}\n\n${status}`);
+  // Decided cards leave the owner's chat: every copy of this card there (the tapped one,
+  // re-opened ones, long-card parts, the copied voice or photo). /history brings them back.
+  const cardIds = await deps.requests.ownerCardMessages(button.requestId, job.chatId);
+  const ids = [...new Set([...cardIds, job.messageId])].sort((a, b) => a - b);
+  try {
+    await deps.telegram.deleteMessages(job.chatId, ids);
+  } catch (error) {
+    if ((error as { error_code?: number }).error_code !== 400) throw error;
+    // Telegram deletes only messages under 48 hours old: the tapped card shows the decision
+    // and loses its buttons instead, so no stale buttons are left.
+    const status = `${approved ? DECISION_TEXTS.approved : DECISION_TEXTS.rejected} · ${localTime(
+      result.decidedAt.toISOString(),
+      ctx.timezone,
+    )}`;
+    const cardText = splitForTelegram(ownerMessage(request.card, ctx)).at(-1) ?? "";
+    await editIgnoringUnchanged(deps, job, `${cardText}\n\n${status}`);
+  }
 
   if (await deps.requests.wasPmNotified(button.requestId)) return;
   const what = request.card ? `: ${request.card.summary}` : ` ${DECISION_TEXTS.yourMessage}`;
@@ -118,16 +130,19 @@ async function openCard(
   const parts = splitForTelegram(ownerMessage(request.card, ctx));
 
   if (request.status === "awaiting_owner") {
-    let cardMessageId = 0;
+    const sentIds: number[] = [];
     for (const [i, part] of parts.entries()) {
-      cardMessageId = await deps.telegram.send(
-        job.chatId,
-        part,
-        i === parts.length - 1 ? { buttons: decisionButtons(requestId) } : {},
+      const last = i === parts.length - 1;
+      sentIds.push(
+        await deps.telegram.send(
+          job.chatId,
+          part,
+          last ? { buttons: decisionButtons(requestId) } : {},
+        ),
       );
     }
     await deps.requests.markOwnerNotified(requestId, [
-      { chatId: job.chatId, messageId: cardMessageId },
+      { chatId: job.chatId, messageId: sentIds.at(-1) ?? 0, extraMessageIds: sentIds.slice(0, -1) },
     ]);
     return;
   }

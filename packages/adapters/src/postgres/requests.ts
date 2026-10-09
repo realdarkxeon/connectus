@@ -23,8 +23,10 @@ export type CardContext = {
   pmSite: string | null;
 };
 
-// Where a card was delivered: the owner's chat and the Telegram message with the buttons.
-export type OwnerCardRef = { chatId: string; messageId: number };
+// Where a card was delivered: the owner's chat, the Telegram message with the buttons, and
+// its other messages (earlier parts of a long card, the copied voice or photo), so all of
+// them can be removed from the owner's chat after the decision.
+export type OwnerCardRef = { chatId: string; messageId: number; extraMessageIds?: number[] };
 
 export type StoredRequest = {
   id: string;
@@ -361,6 +363,21 @@ export class PostgresRequestRepo {
       [OWNER_NOTIFIED, { cards: [{ chatId, messageId }] }],
     );
     return res.rows[0]?.request_id ?? null;
+  }
+
+  // Every Telegram message of this request's cards in one owner's chat, from all receipts
+  // (the first delivery and cards re-opened from a list).
+  async ownerCardMessages(requestId: string, chatId: string): Promise<number[]> {
+    const res = await this.pool.query<{ payload: { cards?: OwnerCardRef[] } }>(
+      "select payload from public.event where request_id = $1 and type = $2",
+      [requestId, OWNER_NOTIFIED],
+    );
+    const ids = res.rows.flatMap((r) =>
+      (r.payload.cards ?? [])
+        .filter((c) => c.chatId === chatId)
+        .flatMap((c) => [c.messageId, ...(c.extraMessageIds ?? [])]),
+    );
+    return [...new Set(ids)].sort((a, b) => a - b);
   }
 
   async wasReplyForwarded(ownerMessageId: string): Promise<boolean> {

@@ -44,7 +44,7 @@ class FakeRequests {
   ctx: CardContext | null = context();
   req: StoredRequest | null = null;
   notified = false;
-  receipt: { chatId: string; messageId: number }[] = [];
+  receipt: { chatId: string; messageId: number; extraMessageIds?: number[] }[] = [];
   saves = 0;
   owners = ["1233584354"];
   failedReason: string | null = null;
@@ -75,7 +75,10 @@ class FakeRequests {
   async wasOwnerNotified() {
     return this.notified;
   }
-  async markOwnerNotified(_id: string, cards: { chatId: string; messageId: number }[]) {
+  async markOwnerNotified(
+    _id: string,
+    cards: { chatId: string; messageId: number; extraMessageIds?: number[] }[],
+  ) {
     this.notified = true;
     this.receipt = cards;
   }
@@ -109,6 +112,8 @@ class FakeTelegram {
   }
   async copy(to: string, from: string, messageId: number) {
     this.copies.push({ to, from, messageId });
+    this.nextId += 1;
+    return this.nextId;
   }
 }
 
@@ -212,7 +217,18 @@ describe("card job", () => {
   it("records which Telegram message holds the card (for decisions and replies)", async () => {
     const { extractor } = fakeExtractor();
     await handleCard({ messageId: "msg-1" }, deps(extractor));
-    expect(requests.receipt).toEqual([{ chatId: "1233584354", messageId: 501 }]);
+    expect(requests.receipt).toEqual([
+      { chatId: "1233584354", messageId: 501, extraMessageIds: [] },
+    ]);
+  });
+
+  it("also records the copied voice note, so it can be removed after the decision", async () => {
+    requests.ctx = context({ kind: "voice", text: null });
+    const { extractor } = fakeExtractor();
+    await handleCard({ messageId: "msg-1" }, deps(extractor));
+    expect(requests.receipt).toEqual([
+      { chatId: "1233584354", messageId: 501, extraMessageIds: [502] },
+    ]);
   });
 
   it("never sends the PM's name to the AI", async () => {

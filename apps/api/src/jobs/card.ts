@@ -25,7 +25,7 @@ export type CardDeps = {
   };
   telegram: {
     send(chatId: string, text: string, options?: SendOptions): Promise<number>;
-    copy(toChatId: string, fromChatId: string, messageId: number): Promise<void>;
+    copy(toChatId: string, fromChatId: string, messageId: number): Promise<number>;
     profileUrl(userId: string): Promise<string | null>;
   };
   extractor: CardExtractor;
@@ -79,17 +79,25 @@ export async function handleCard(job: CardJob, deps: CardDeps): Promise<void> {
   const parts = splitForTelegram(text);
   const cards: OwnerCardRef[] = [];
   for (const chatId of owners) {
-    let cardMessageId = 0;
+    const sentIds: number[] = [];
     for (const [i, part] of parts.entries()) {
       const options: SendOptions = {
         ...(i === 0 && link && link.offset + link.length <= part.length && { link }),
         ...(i === parts.length - 1 && { buttons: decisionButtons(requestId) }),
       };
-      cardMessageId = await sendWithLinkFallback(deps, chatId, part, options);
+      sentIds.push(await sendWithLinkFallback(deps, chatId, part, options));
     }
-    cards.push({ chatId, messageId: cardMessageId });
     // Voice, photo, file: the owner also gets the PM's original, exactly as sent.
-    if (ctx.kind !== "text") await deps.telegram.copy(chatId, original.chatId, original.messageId);
+    if (ctx.kind !== "text") {
+      sentIds.push(await deps.telegram.copy(chatId, original.chatId, original.messageId));
+    }
+    // The buttons are on the last text part; the rest is removed with it after the decision.
+    const buttonsAt = sentIds[parts.length - 1] ?? 0;
+    cards.push({
+      chatId,
+      messageId: buttonsAt,
+      extraMessageIds: sentIds.filter((id) => id !== buttonsAt),
+    });
   }
   await deps.requests.markOwnerNotified(requestId, cards);
 }

@@ -46,6 +46,11 @@ class FakeRequests {
   status: "awaiting_owner" | "in_progress" | "rejected" = "in_progress";
   companyOfRequest = "co-1";
   receipts: { chatId: string; messageId: number }[][] = [];
+  // Messages of this request's cards in the owner's chat (from owner_notified receipts).
+  cardMessages = [900, 899, 901];
+  async ownerCardMessages(_requestId: string, _chatId: string) {
+    return this.cardMessages;
+  }
   async latestDecision() {
     return this.decision ? { verdict: this.decision.verdict, decidedAt: this.decision.at } : null;
   }
@@ -102,6 +107,14 @@ class FakeTelegram {
   edits: { chatId: string; messageId: number; text: string; buttons: unknown }[] = [];
   sent: { chatId: string; text: string; options: SendOptions }[] = [];
   failAnswer = false;
+  deleted: { chatId: string; ids: number[] }[] = [];
+  refuseDelete = false;
+  async deleteMessages(chatId: string, ids: number[]) {
+    if (this.refuseDelete) {
+      throw Object.assign(new Error("message can't be deleted"), { error_code: 400 });
+    }
+    this.deleted.push({ chatId, ids });
+  }
   async answerButton(id: string, text: string) {
     if (this.failAnswer) throw Object.assign(new Error("query is too old"), { error_code: 400 });
     this.answers.push({ id, text });
@@ -132,13 +145,11 @@ const tap = (data: string, fromUserId = "1233584354") => ({
 const deps = (): ButtonDeps => ({ requests, telegram });
 
 describe("button job: decisions", () => {
-  it("approves: answers the tap, updates the card, tells the PM", async () => {
+  it("approves: answers the tap, removes the card from the owner's chat, tells the PM", async () => {
     await handleButton(tap(encodeButton("approve", REQ)), deps());
     expect(telegram.answers.map((a) => a.text)).toEqual(["✅ Одобрено"]);
-    expect(telegram.edits).toHaveLength(1);
-    expect(telegram.edits[0]?.text).toContain("Докупить арматуру");
-    expect(telegram.edits[0]?.text.endsWith("✅ Одобрено · пт 09.10, 14:05")).toBe(true);
-    expect(telegram.edits[0]?.buttons).toBeUndefined();
+    expect(telegram.deleted).toEqual([{ chatId: "1233584354", ids: [899, 900, 901] }]);
+    expect(telegram.edits).toHaveLength(0);
     expect(telegram.sent).toEqual([
       {
         chatId: "401614622",
@@ -159,7 +170,7 @@ describe("button job: decisions", () => {
     await handleButton(tap(encodeButton("approve", REQ)), deps());
     await handleButton(tap(encodeButton("reject", REQ)), deps());
     expect(telegram.answers.map((a) => a.text)).toEqual(["✅ Одобрено", "Уже одобрено"]);
-    expect(telegram.edits.at(-1)?.text.endsWith("✅ Одобрено · пт 09.10, 14:05")).toBe(true);
+    expect(telegram.deleted).toHaveLength(2);
     expect(telegram.sent).toHaveLength(1);
   });
 
@@ -183,10 +194,26 @@ describe("button job: decisions", () => {
     expect(telegram.sent).toHaveLength(0);
   });
 
-  it("still updates the card and tells the PM if the tap is too old to answer", async () => {
+  it("still removes the card and tells the PM if the tap is too old to answer", async () => {
     telegram.failAnswer = true;
     await handleButton(tap(encodeButton("approve", REQ)), deps());
+    expect(telegram.deleted).toHaveLength(1);
+    expect(telegram.sent).toHaveLength(1);
+  });
+
+  it("removes the tapped message even if no receipt lists it", async () => {
+    requests.cardMessages = [];
+    await handleButton(tap(encodeButton("approve", REQ)), deps());
+    expect(telegram.deleted).toEqual([{ chatId: "1233584354", ids: [900] }]);
+  });
+
+  it("older than 48 hours (cannot delete): shows the decision on the card instead", async () => {
+    telegram.refuseDelete = true;
+    await handleButton(tap(encodeButton("approve", REQ)), deps());
     expect(telegram.edits).toHaveLength(1);
+    expect(telegram.edits[0]?.text).toContain("Докупить арматуру");
+    expect(telegram.edits[0]?.text.endsWith("✅ Одобрено · пт 09.10, 14:05")).toBe(true);
+    expect(telegram.edits[0]?.buttons).toBeUndefined();
     expect(telegram.sent).toHaveLength(1);
   });
 
@@ -194,7 +221,6 @@ describe("button job: decisions", () => {
     requests.storedCard = null;
     await handleButton(tap(encodeButton("approve", REQ)), deps());
     expect(telegram.sent[0]?.text).toBe("✅ Владелец одобрил ваше сообщение");
-    expect(telegram.edits[0]?.text).toContain("«арматуры не хватает»");
   });
 });
 
@@ -209,7 +235,9 @@ describe("button job: open a card from a list", () => {
       "✅ Одобрить",
       "❌ Отклонить",
     ]);
-    expect(requests.receipts).toEqual([[{ chatId: "1233584354", messageId: 777 }]]);
+    expect(requests.receipts).toEqual([
+      [{ chatId: "1233584354", messageId: 777, extraMessageIds: [] }],
+    ]);
   });
 
   it("shows a decided card with its decision and no buttons", async () => {

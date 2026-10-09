@@ -23,7 +23,7 @@ export type OwnerDeps = {
   };
   telegram: {
     send(chatId: string, text: string, options?: SendOptions): Promise<number>;
-    copy(toChatId: string, fromChatId: string, messageId: number): Promise<void>;
+    copy(toChatId: string, fromChatId: string, messageId: number): Promise<number>;
   };
   clock: Clock;
 };

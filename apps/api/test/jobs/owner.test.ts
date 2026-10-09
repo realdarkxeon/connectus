@@ -74,6 +74,7 @@ class FakeTelegram {
   }
   async copy(to: string, from: string, messageId: number) {
     this.copies.push({ to, from, messageId });
+    return 2;
   }
 }
 

@@ -267,6 +267,17 @@ describe("PostgresRequestRepo", () => {
     expect(await repo.requestForOwnerCard("someone-else", 4242)).toBeNull();
   });
 
+  it("lists every message of a request's cards in one owner chat", async () => {
+    const requestId = await repo.openRequest(await newMessage());
+    await repo.markOwnerNotified(requestId, [
+      { chatId: ownerTelegramId, messageId: 10, extraMessageIds: [9, 11] },
+      { chatId: "another-owner", messageId: 50 },
+    ]);
+    await repo.markOwnerNotified(requestId, [{ chatId: ownerTelegramId, messageId: 20 }]);
+    expect(await repo.ownerCardMessages(requestId, ownerTelegramId)).toEqual([9, 10, 11, 20]);
+    expect(await repo.requestForOwnerCard(ownerTelegramId, 10)).toBe(requestId);
+  });
+
   it("forwards an owner's reply once and links it to the request", async () => {
     const requestId = await repo.openRequest(await newMessage());
     const ownerMessageId = randomUUID();

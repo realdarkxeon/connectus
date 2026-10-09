@@ -44,6 +44,7 @@ const answered: { id: string; text: string }[] = [];
 const edited: { chat_id: string; message_id: number; text: string }[] = [];
 let nextMessageId = 1000;
 const menus: string[] = [];
+const deleted: { chat_id: string; message_ids: number[] }[] = [];
 const fakeTelegram = createServer((req, res) => {
   let body = "";
   req.on("data", (chunk) => {
@@ -70,6 +71,10 @@ const fakeTelegram = createServer((req, res) => {
         message_id: params.message_id,
       });
       reply({ message_id: 2 });
+    } else if (url.endsWith("/deleteMessages")) {
+      const params = JSON.parse(body || "{}");
+      deleted.push({ chat_id: String(params.chat_id), message_ids: params.message_ids });
+      reply(true);
     } else if (url.endsWith("/setMyCommands")) {
       const params = JSON.parse(body || "{}");
       menus.push(String(params.scope?.chat_id));
@@ -318,8 +323,13 @@ try {
   );
   check("owner taps ✅: the PM is told 'Владелец одобрил'", pmTold !== undefined);
   check(
-    "the tapped card shows the decision",
-    edited.some((e) => e.chat_id === String(OWNER_TELEGRAM_ID) && e.text.includes("✅ Одобрено ·")),
+    "the decided card was removed from the owner's chat",
+    deleted.some(
+      (d) =>
+        d.chat_id === String(OWNER_TELEGRAM_ID) &&
+        textCard !== undefined &&
+        d.message_ids.includes(textCard.message_id),
+    ),
   );
   const decided = await pool.query<{ status: string; verdicts: string[] }>(
     `select r.status, array(select verdict from public.decision d where d.request_id = r.id) as verdicts
