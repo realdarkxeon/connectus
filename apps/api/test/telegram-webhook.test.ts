@@ -1,3 +1,4 @@
+import type { ButtonJob } from "@connectus/adapters";
 import type { InboundMessage, InboundStore, IntakeResult } from "@connectus/core";
 import { Bot } from "grammy";
 import type { UserFromGetMe } from "grammy/types";
@@ -26,11 +27,33 @@ class FakeStore implements InboundStore {
   }
 }
 
+let buttons: ButtonJob[] = [];
+const enqueueButton = async (job: ButtonJob) => {
+  buttons.push(job);
+};
+
 function setup(store: InboundStore) {
+  buttons = [];
   // botInfo is given, so the bot never calls Telegram in tests.
   const bot = new Bot("123:TEST", { botInfo });
-  return createApp({ telegramWebhook: telegramWebhook(bot, store, SECRET) });
+  return createApp({ telegramWebhook: telegramWebhook(bot, store, SECRET, enqueueButton) });
 }
+
+const tapUpdate = (chatType = "private") => ({
+  update_id: 11,
+  callback_query: {
+    id: "CBQ-1",
+    from: { id: 1233584354, is_bot: false, first_name: "Owner" },
+    chat_instance: "ci",
+    data: "a:5a9e0000-0000-4000-8000-0000000000aa",
+    message: {
+      message_id: 900,
+      date: 1_791_270_000,
+      chat: { id: 1233584354, type: chatType, first_name: "Owner" },
+      text: "card",
+    },
+  },
+});
 
 const voiceUpdate = {
   update_id: 10,
@@ -61,6 +84,31 @@ describe("Telegram webhook", () => {
     expect(res.status).toBe(200);
     expect(store.saved).toHaveLength(1);
     expect(store.saved[0]).toMatchObject({ kind: "voice", externalMessageId: "1001:57" });
+  });
+
+  it("queues a button tap and answers at once (the worker does the rest)", async () => {
+    const res = await knock(setup(new FakeStore()), tapUpdate(), SECRET);
+    expect(res.status).toBe(200);
+    expect(buttons).toEqual([
+      {
+        callbackQueryId: "CBQ-1",
+        fromUserId: "1233584354",
+        chatId: "1233584354",
+        messageId: 900,
+        data: "a:5a9e0000-0000-4000-8000-0000000000aa",
+      },
+    ]);
+  });
+
+  it("ignores taps outside a private chat with the bot", async () => {
+    await knock(setup(new FakeStore()), tapUpdate("group"), SECRET);
+    expect(buttons).toEqual([]);
+  });
+
+  it("queues nothing for a tap with the wrong password", async () => {
+    const res = await knock(setup(new FakeStore()), tapUpdate(), "wrong-secret");
+    expect(res.status).toBe(401);
+    expect(buttons).toEqual([]);
   });
 
   it("rejects a knock with the wrong password and saves nothing", async () => {

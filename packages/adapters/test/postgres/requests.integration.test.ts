@@ -186,8 +186,12 @@ describe("PostgresRequestRepo", () => {
   it("remembers that the owner was notified (the delivery receipt)", async () => {
     const requestId = await repo.openRequest(await newMessage());
     expect(await repo.wasOwnerNotified(requestId)).toBe(false);
-    await repo.markOwnerNotified(requestId);
+    await repo.markOwnerNotified(requestId, [{ chatId: ownerTelegramId, messageId: 901 }]);
     expect(await repo.wasOwnerNotified(requestId)).toBe(true);
+    expect((await events(requestId)).at(-1)).toEqual({
+      type: "owner_notified",
+      payload: { cards: [{ chatId: ownerTelegramId, messageId: 901 }] },
+    });
   });
 
   it("finds the owners' Telegram chats, not the PMs'", async () => {

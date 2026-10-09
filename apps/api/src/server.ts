@@ -1,4 +1,10 @@
-import { ensureQueues, PostgresInboundStore, postgresConnection } from "@connectus/adapters";
+import {
+  type ButtonJob,
+  ensureQueues,
+  PostgresInboundStore,
+  postgresConnection,
+  QUEUES,
+} from "@connectus/adapters";
 import { serve } from "@hono/node-server";
 import { Bot } from "grammy";
 import pg from "pg";
@@ -28,7 +34,14 @@ await bot.init(); // one getMe call; grammY needs the bot's own info to handle u
 
 const store = new PostgresInboundStore(pool, boss);
 const app = createApp({
-  telegramWebhook: telegramWebhook(bot, store, config.TELEGRAM_WEBHOOK_SECRET),
+  telegramWebhook: telegramWebhook(
+    bot,
+    store,
+    config.TELEGRAM_WEBHOOK_SECRET,
+    async (job: ButtonJob) => {
+      await boss.send(QUEUES.button, job);
+    },
+  ),
 });
 
 // On staging/production, (re)register the webhook with the current address and secret.
@@ -37,7 +50,7 @@ const url = webhookUrl(config);
 if (url) {
   await bot.api.setWebhook(url, {
     secret_token: config.TELEGRAM_WEBHOOK_SECRET,
-    allowed_updates: ["message"],
+    allowed_updates: ["message", "callback_query"],
   });
   log.info("telegram webhook registered", { host: new URL(url).host });
 }

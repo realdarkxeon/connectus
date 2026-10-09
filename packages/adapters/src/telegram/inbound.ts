@@ -1,5 +1,6 @@
 import type { InboundMessage, MessageKind } from "@connectus/core";
 import type { Message, Update } from "grammy/types";
+import type { ButtonJob } from "../queues.ts";
 
 // Translates a Telegram update into our InboundMessage. Returns null for updates we do not
 // take in: anything that is not a new message in a private chat with the bot.
@@ -38,4 +39,18 @@ function classify(message: Message): { kind: MessageKind; fileId: string | null 
   if (message.text !== undefined) return { kind: "text", fileId: null };
   // Stickers, locations, contacts: kept, so the PM's message is never silently dropped.
   return { kind: "other", fileId: null };
+}
+
+// A tap on one of our inline buttons, in a private chat with the bot. Null for anything else.
+export function toButtonPress(update: Update): ButtonJob | null {
+  const query = update.callback_query;
+  const message = query?.message;
+  if (!query?.data || !message || message.chat.type !== "private") return null;
+  return {
+    callbackQueryId: query.id,
+    fromUserId: String(query.from.id),
+    chatId: String(message.chat.id),
+    messageId: message.message_id,
+    data: query.data,
+  };
 }

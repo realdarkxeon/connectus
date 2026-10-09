@@ -35,3 +35,9 @@ export const CARD_TEXTS = {
   failedHeader: "⚠️ Не удалось разобрать автоматически",
   noText: "(без текста, оригинал ниже)",
 } as const;
+
+// Decisions (MVP S2). Approved by Darkhan 2026-10-09; confirm wording with the owner.
+export const DECISION_TEXTS = {
+  approve: "✅ Одобрить",
+  reject: "❌ Отклонить",
+} as const;

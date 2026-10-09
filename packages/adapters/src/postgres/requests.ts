@@ -22,6 +22,9 @@ export type CardContext = {
   pmSite: string | null;
 };
 
+// Where a card was delivered: the owner's chat and the Telegram message with the buttons.
+export type OwnerCardRef = { chatId: string; messageId: number };
+
 export type StoredRequest = {
   id: string;
   companyId: string;
@@ -198,11 +201,13 @@ export class PostgresRequestRepo {
     return (res.rowCount ?? 0) > 0;
   }
 
-  async markOwnerNotified(requestId: string): Promise<void> {
+  // The receipt also records where each card was delivered, so a decision can update that
+  // message and an owner's reply to it can be matched to its request.
+  async markOwnerNotified(requestId: string, cards: OwnerCardRef[]): Promise<void> {
     await this.pool.query(
       `insert into public.event (company_id, request_id, type, payload, at)
-       select company_id, id, $2, '{}', $3 from public.request where id = $1`,
-      [requestId, OWNER_NOTIFIED, this.clock.now()],
+       select company_id, id, $2, $3, $4 from public.request where id = $1`,
+      [requestId, OWNER_NOTIFIED, { cards }, this.clock.now()],
     );
   }
 

@@ -1,10 +1,14 @@
 import {
   type CardContext,
   type CardJob,
+  type OwnerCardRef,
   parseTelegramMessageId,
+  type SendOptions,
   type StoredRequest,
 } from "@connectus/adapters";
 import type { CardExtractor, Clock, Extraction } from "@connectus/core";
+import { decisionButtons } from "../buttons.ts";
+import { log } from "../log.ts";
 import {
   type CardSender,
   formatOwnerCard,
@@ -21,11 +25,11 @@ export type CardDeps = {
     saveExtraction(requestId: string, extraction: Extraction): Promise<"saved" | "already">;
     markCardFailed(requestId: string, reason: string): Promise<void>;
     wasOwnerNotified(requestId: string): Promise<boolean>;
-    markOwnerNotified(requestId: string): Promise<void>;
+    markOwnerNotified(requestId: string, cards: OwnerCardRef[]): Promise<void>;
     ownerChats(companyId: string): Promise<string[]>;
   };
   telegram: {
-    reply(chatId: string, text: string): Promise<void>;
+    send(chatId: string, text: string, options?: SendOptions): Promise<number>;
     copy(toChatId: string, fromChatId: string, messageId: number): Promise<void>;
   };
   extractor: CardExtractor;
@@ -71,11 +75,46 @@ export async function handleCard(job: CardJob, deps: CardDeps): Promise<void> {
     ? formatOwnerCard(request.card, pm, ctx.timezone)
     : formatRawFallback(pm, ctx.text?.trim() || CARD_TEXTS.noText);
   const original = parseTelegramMessageId(ctx.externalMessageId);
+  // The PM's name links to their Telegram chat (in a private chat, the chat id is the user id).
+  const nameAt = text.indexOf(`${CARD_TEXTS.from}: `) + CARD_TEXTS.from.length + 2;
+  const link = { offset: nameAt, length: pm.name.length, url: `tg://user?id=${original.chatId}` };
+  const parts = splitForTelegram(text);
+  const cards: OwnerCardRef[] = [];
   for (const chatId of owners) {
-    for (const part of splitForTelegram(text)) await deps.telegram.reply(chatId, part);
+    let cardMessageId = 0;
+    for (const [i, part] of parts.entries()) {
+      const options: SendOptions = {
+        ...(i === 0 && link.offset + link.length <= part.length && { link }),
+        ...(i === parts.length - 1 && { buttons: decisionButtons(requestId) }),
+      };
+      cardMessageId = await sendWithLinkFallback(deps, chatId, part, options);
+    }
+    cards.push({ chatId, messageId: cardMessageId });
     // Voice, photo, file: the owner also gets the PM's original, exactly as sent.
     if (ctx.kind !== "text") await deps.telegram.copy(chatId, original.chatId, original.messageId);
   }
-  // Written right after sending. A crash in between means one duplicate card, never a lost one.
-  await deps.requests.markOwnerNotified(requestId);
+  await deps.requests.markOwnerNotified(requestId, cards);
+}
+
+// Some people's privacy settings block links to their account. A link must never be the
+// reason the owner gets no card: if Telegram refuses the message (400 Bad Request), send it
+// without the link. Any other failure (network, Telegram down) fails the job for a normal
+// retry, because the first send may have arrived and a resend would duplicate the card.
+async function sendWithLinkFallback(
+  deps: CardDeps,
+  chatId: string,
+  text: string,
+  options: SendOptions,
+): Promise<number> {
+  if (!options.link) return deps.telegram.send(chatId, text, options);
+  try {
+    return await deps.telegram.send(chatId, text, options);
+  } catch (error) {
+    if ((error as { error_code?: number }).error_code !== 400) throw error;
+    log.warn("card sent without name link", {
+      error: error instanceof Error ? error.message : "unknown",
+    });
+    const { link: _, ...withoutLink } = options;
+    return deps.telegram.send(chatId, text, withoutLink);
+  }
 }

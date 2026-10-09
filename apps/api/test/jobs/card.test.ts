@@ -1,4 +1,4 @@
-import type { CardContext, StoredRequest } from "@connectus/adapters";
+import type { CardContext, SendOptions, StoredRequest } from "@connectus/adapters";
 import type {
   Card,
   CardExtractor,
@@ -43,6 +43,7 @@ class FakeRequests {
   ctx: CardContext | null = context();
   req: StoredRequest | null = null;
   notified = false;
+  receipt: { chatId: string; messageId: number }[] = [];
   saves = 0;
   owners = ["1233584354"];
   failedReason: string | null = null;
@@ -73,8 +74,9 @@ class FakeRequests {
   async wasOwnerNotified() {
     return this.notified;
   }
-  async markOwnerNotified() {
+  async markOwnerNotified(_id: string, cards: { chatId: string; messageId: number }[]) {
     this.notified = true;
+    this.receipt = cards;
   }
   async ownerChats() {
     return this.owners;
@@ -82,15 +84,22 @@ class FakeRequests {
 }
 
 class FakeTelegram {
-  sent: { chatId: string; text: string }[] = [];
+  sent: { chatId: string; text: string; options: SendOptions }[] = [];
   copies: { to: string; from: string; messageId: number }[] = [];
   failNextSend = false;
-  async reply(chatId: string, text: string) {
+  refuseLinks = false;
+  private nextId = 500;
+  async send(chatId: string, text: string, options: SendOptions = {}) {
     if (this.failNextSend) {
       this.failNextSend = false;
       throw new Error("telegram down");
     }
-    this.sent.push({ chatId, text });
+    if (this.refuseLinks && options.link) {
+      throw Object.assign(new Error("Bad Request: privacy"), { error_code: 400 });
+    }
+    this.sent.push({ chatId, text, options });
+    this.nextId += 1;
+    return this.nextId;
   }
   async copy(to: string, from: string, messageId: number) {
     this.copies.push({ to, from, messageId });
@@ -140,6 +149,39 @@ describe("card job", () => {
     expect(telegram.sent[0]?.text).toContain("Докупить арматуру");
     expect(telegram.sent[0]?.text).toContain("От: Серик");
     expect(requests.notified).toBe(true);
+  });
+
+  it("puts approve and reject buttons under the card", async () => {
+    const { extractor } = fakeExtractor();
+    await handleCard({ messageId: "msg-1" }, deps(extractor));
+    expect(telegram.sent[0]?.options.buttons?.[0]?.map((b) => b.text)).toEqual([
+      "✅ Одобрить",
+      "❌ Отклонить",
+    ]);
+  });
+
+  it("makes the PM's name a link to their Telegram chat", async () => {
+    const { extractor } = fakeExtractor();
+    await handleCard({ messageId: "msg-1" }, deps(extractor));
+    const { text, options } = telegram.sent[0] ?? { text: "", options: {} };
+    const link = options.link;
+    expect(link?.url).toBe("tg://user?id=401614622");
+    expect(link && text.slice(link.offset, link.offset + link.length)).toBe("Серик");
+  });
+
+  it("sends the card without the link if Telegram refuses the link", async () => {
+    telegram.refuseLinks = true;
+    const { extractor } = fakeExtractor();
+    await handleCard({ messageId: "msg-1" }, deps(extractor));
+    expect(telegram.sent).toHaveLength(1);
+    expect(telegram.sent[0]?.options.link).toBeUndefined();
+    expect(telegram.sent[0]?.options.buttons).toBeDefined();
+  });
+
+  it("records which Telegram message holds the card (for decisions and replies)", async () => {
+    const { extractor } = fakeExtractor();
+    await handleCard({ messageId: "msg-1" }, deps(extractor));
+    expect(requests.receipt).toEqual([{ chatId: "1233584354", messageId: 501 }]);
   });
 
   it("never sends the PM's name to the AI", async () => {

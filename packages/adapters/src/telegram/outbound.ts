@@ -14,6 +14,15 @@ export function parseTelegramMessageId(externalMessageId: string): {
 
 export type DownloadedFile = { bytes: Uint8Array; extension: string | null };
 
+export type Button = { text: string; data: string };
+export type SendOptions = {
+  // Rows of inline buttons under the message.
+  buttons?: Button[][];
+  // Makes part of the text a link (offset and length in UTF-16 units, as Telegram counts).
+  link?: { offset: number; length: number; url: string };
+  replyTo?: number;
+};
+
 // Sending and downloading through the Telegram Bot API. Never log or rethrow anything that
 // contains the token: the file download URL embeds it.
 export class TelegramClient {
@@ -34,6 +43,43 @@ export class TelegramClient {
         reply_parameters: { message_id: replyToMessageId, allow_sending_without_reply: true },
       }),
     });
+  }
+
+  // Sends a message and returns its id, needed later to edit it or match replies to it.
+  async send(chatId: string, text: string, options: SendOptions = {}): Promise<number> {
+    const { buttons, link, replyTo } = options;
+    const sent = await this.api.sendMessage(chatId, text, {
+      ...(buttons && {
+        reply_markup: {
+          inline_keyboard: buttons.map((row) =>
+            row.map((b) => ({ text: b.text, callback_data: b.data })),
+          ),
+        },
+      }),
+      ...(link && {
+        entities: [{ type: "text_link", offset: link.offset, length: link.length, url: link.url }],
+      }),
+      ...(replyTo !== undefined && {
+        reply_parameters: { message_id: replyTo, allow_sending_without_reply: true },
+      }),
+    });
+    return sent.message_id;
+  }
+
+  // Replaces a message's text and buttons (no buttons: they disappear).
+  async edit(chatId: string, messageId: number, text: string, buttons?: Button[][]): Promise<void> {
+    await this.api.editMessageText(chatId, messageId, text, {
+      reply_markup: {
+        inline_keyboard: (buttons ?? []).map((row) =>
+          row.map((b) => ({ text: b.text, callback_data: b.data })),
+        ),
+      },
+    });
+  }
+
+  // Stops the loading spinner on a tapped button and shows a short notice.
+  async answerButton(callbackQueryId: string, text: string): Promise<void> {
+    await this.api.answerCallbackQuery(callbackQueryId, { text });
   }
 
   // Copies a message (voice, photo, file) from one chat to another, without a "forwarded"
