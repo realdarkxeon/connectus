@@ -16,6 +16,7 @@ export type CardContext = {
   kind: MessageKind;
   text: string | null;
   externalMessageId: string;
+  replyToExternalMessageId: string | null;
   sender: { personId: string; role: "owner" | "deputy" | "pm"; name: string };
   timezone: string;
   sites: string[];
@@ -35,6 +36,7 @@ export type StoredRequest = {
 // Logbook entries that serve as delivery receipts: the owner's card, the PM's answer.
 const OWNER_NOTIFIED = "owner_notified";
 const PM_NOTIFIED = "pm_notified";
+const OWNER_REPLIED = "owner_replied";
 
 export type Verdict = "approve" | "reject";
 export type Person = { personId: string; companyId: string; role: "owner" | "deputy" | "pm" };
@@ -64,6 +66,7 @@ export class PostgresRequestRepo {
     >(
       `select m.id as "messageId", m.company_id as "companyId", m.request_id as "requestId",
               m.kind, m.text, m.external_message_id as "externalMessageId",
+              m.reply_to_external_message_id as "replyToExternalMessageId",
               p.id as "personId", p.role, p.display_name as name, c.timezone
        from public.message m
        join public.person p on p.company_id = m.company_id and p.id = m.person_id
@@ -298,6 +301,42 @@ export class PostgresRequestRepo {
        select company_id, id, $2, '{}', $3 from public.request where id = $1`,
       [requestId, PM_NOTIFIED, this.clock.now()],
     );
+  }
+
+  // The request whose card is this Telegram message in this chat (from the owner_notified
+  // receipts; event_owner_card_idx makes this an index lookup).
+  async requestForOwnerCard(chatId: string, messageId: number): Promise<string | null> {
+    const res = await this.pool.query<{ request_id: string }>(
+      `select request_id from public.event
+       where type = $1 and payload @> $2
+       order by id desc limit 1`,
+      [OWNER_NOTIFIED, { cards: [{ chatId, messageId }] }],
+    );
+    return res.rows[0]?.request_id ?? null;
+  }
+
+  async wasReplyForwarded(ownerMessageId: string): Promise<boolean> {
+    const res = await this.pool.query(
+      "select 1 from public.event where type = $1 and payload @> $2 limit 1",
+      [OWNER_REPLIED, { messageId: ownerMessageId }],
+    );
+    return (res.rowCount ?? 0) > 0;
+  }
+
+  // The receipt for a forwarded owner reply, and the owner's message joins the request's
+  // thread for the audit trail. The logbook stores the message id, never its text.
+  async markReplyForwarded(requestId: string, ownerMessageId: string): Promise<void> {
+    await this.inTransaction(async (client) => {
+      await client.query(
+        `insert into public.event (company_id, request_id, type, payload, at)
+         select company_id, id, $2, $3, $4 from public.request where id = $1`,
+        [requestId, OWNER_REPLIED, { messageId: ownerMessageId }, this.clock.now()],
+      );
+      await client.query(
+        "update public.message set request_id = $2 where id = $1 and request_id is null",
+        [ownerMessageId, requestId],
+      );
+    });
   }
 
   // Telegram chats of the company's owners. MVP: owners only (deputies come later).

@@ -251,6 +251,35 @@ describe("PostgresRequestRepo", () => {
     expect(await repo.wasPmNotified(requestId)).toBe(true);
   });
 
+  it("finds the request behind an owner's card, by chat and Telegram message", async () => {
+    const requestId = await repo.openRequest(await newMessage());
+    await repo.markOwnerNotified(requestId, [{ chatId: ownerTelegramId, messageId: 4242 }]);
+    expect(await repo.requestForOwnerCard(ownerTelegramId, 4242)).toBe(requestId);
+    expect(await repo.requestForOwnerCard(ownerTelegramId, 4243)).toBeNull();
+    expect(await repo.requestForOwnerCard("someone-else", 4242)).toBeNull();
+  });
+
+  it("forwards an owner's reply once and links it to the request", async () => {
+    const requestId = await repo.openRequest(await newMessage());
+    const ownerMessageId = randomUUID();
+    await pool.query(
+      `insert into public.message (id, company_id, person_id, channel, external_message_id, kind, text)
+       values ($1, $2, $3, 'telegram', $4, 'text', 'ответ')`,
+      [ownerMessageId, companyId, ownerId, `${ownerTelegramId}:${randomUUID()}`],
+    );
+    expect(await repo.wasReplyForwarded(ownerMessageId)).toBe(false);
+    await repo.markReplyForwarded(requestId, ownerMessageId);
+    expect(await repo.wasReplyForwarded(ownerMessageId)).toBe(true);
+    expect((await events(requestId)).at(-1)).toEqual({
+      type: "owner_replied",
+      payload: { messageId: ownerMessageId },
+    });
+    const linked = await pool.query("select request_id from public.message where id = $1", [
+      ownerMessageId,
+    ]);
+    expect(linked.rows[0].request_id).toBe(requestId);
+  });
+
   it("finds the owners' Telegram chats, not the PMs'", async () => {
     expect(await repo.ownerChats(companyId)).toEqual([ownerTelegramId]);
   });

@@ -19,6 +19,8 @@ export type InboundMessage = {
   text: string | null;
   // Channel file id for voice, photo, document or video; downloaded later by the worker.
   externalFileId: string | null;
+  // The message this one replies to, as an external message id; null if not a reply.
+  replyToExternalMessageId: string | null;
   receivedAt: Date;
 };
 

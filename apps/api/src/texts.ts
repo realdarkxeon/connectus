@@ -52,3 +52,10 @@ export const DECISION_TEXTS = {
   pmRejectedHint: "Если нужно, свяжитесь с владельцем.",
   yourMessage: "ваше сообщение",
 } as const;
+
+// The owner answering by replying to a card (MVP S2). Approved by Darkhan 2026-10-09.
+export const OWNER_TEXTS = {
+  replyHeader: "💬 Ответ владельца:",
+  replySent: "📨 Отправлено ПМ",
+  hint: "Чтобы ответить ПМ, ответьте (Reply) на его карточку. Команды: /pending /active /history",
+} as const;

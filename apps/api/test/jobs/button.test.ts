@@ -27,6 +27,7 @@ const ctx: CardContext = {
   kind: "text",
   text: "арматуры не хватает",
   externalMessageId: "401614622:57",
+  replyToExternalMessageId: null,
   sender: { personId: "pm-1", role: "pm", name: "Серик" },
   timezone: "Asia/Almaty",
   sites: [],

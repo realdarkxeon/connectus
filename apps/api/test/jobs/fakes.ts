@@ -10,6 +10,7 @@ export function storedMessage(overrides: Partial<StoredMessage> = {}): StoredMes
     externalFileId: "VOICE-1",
     mediaKey: null,
     receivedAt: new Date("2026-10-07T04:00:00Z"),
+    senderRole: "pm",
     ...overrides,
   };
 }

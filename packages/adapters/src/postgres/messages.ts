@@ -10,6 +10,7 @@ export type StoredMessage = {
   externalFileId: string | null;
   mediaKey: string | null;
   receivedAt: Date;
+  senderRole: "owner" | "deputy" | "pm";
 };
 
 export type UnroutedMessage = {
@@ -30,10 +31,13 @@ export class PostgresMessageRepo {
 
   async find(id: string): Promise<StoredMessage | null> {
     const res = await this.pool.query<StoredMessage>(
-      `select id, company_id as "companyId", channel, kind,
-              external_message_id as "externalMessageId", external_file_id as "externalFileId",
-              media_key as "mediaKey", received_at as "receivedAt"
-       from public.message where id = $1`,
+      `select m.id, m.company_id as "companyId", m.channel, m.kind,
+              m.external_message_id as "externalMessageId",
+              m.external_file_id as "externalFileId", m.media_key as "mediaKey",
+              m.received_at as "receivedAt", p.role as "senderRole"
+       from public.message m
+       join public.person p on p.company_id = m.company_id and p.id = m.person_id
+       where m.id = $1`,
       [id],
     );
     return res.rows[0] ?? null;

@@ -20,6 +20,9 @@ export function toInboundMessage(update: Update): InboundMessage | null {
     kind,
     text: message.text ?? message.caption ?? null,
     externalFileId: fileId,
+    replyToExternalMessageId: message.reply_to_message
+      ? `${message.chat.id}:${message.reply_to_message.message_id}`
+      : null,
     receivedAt: new Date(message.date * 1000),
   };
 }

@@ -21,6 +21,7 @@ import { handleButton } from "./jobs/button.ts";
 import { handleCard } from "./jobs/card.ts";
 import { handleIngest } from "./jobs/ingest.ts";
 import { handleMedia } from "./jobs/media.ts";
+import { handleOwnerMessage } from "./jobs/owner.ts";
 import { handleUnrouted } from "./jobs/unrouted.ts";
 import { log } from "./log.ts";
 
@@ -106,7 +107,13 @@ await boss.work<UnroutedJob>(
 await boss.work<CardJob>(
   QUEUES.card,
   worker<CardJob>(QUEUES.card, (data) =>
-    handleCard(data, { requests, telegram, extractor, clock }),
+    handleCard(data, {
+      requests,
+      telegram,
+      extractor,
+      clock,
+      ownerMessage: (ctx) => handleOwnerMessage(ctx, { requests, telegram }),
+    }),
   ),
 );
 await boss.work<ButtonJob>(

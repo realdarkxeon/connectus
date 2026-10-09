@@ -31,6 +31,7 @@ const context = (overrides: Partial<CardContext> = {}): CardContext => ({
   kind: "text",
   text: "арматуры не хватает, 380 тыс",
   externalMessageId: "401614622:57",
+  replyToExternalMessageId: null,
   sender: { personId: "pm-1", role: "pm", name: "Серик" },
   timezone: "Asia/Almaty",
   sites: ["ЖК Алтын"],
@@ -139,11 +140,21 @@ let telegram: FakeTelegram;
 const clock = { now: () => new Date("2026-10-09T05:00:00Z") };
 
 beforeEach(() => {
+  ownerMessages = [];
   requests = new FakeRequests();
   telegram = new FakeTelegram();
 });
 
-const deps = (extractor: CardExtractor): CardDeps => ({ requests, telegram, extractor, clock });
+let ownerMessages: CardContext[] = [];
+const deps = (extractor: CardExtractor): CardDeps => ({
+  requests,
+  telegram,
+  extractor,
+  clock,
+  ownerMessage: async (ctx) => {
+    ownerMessages.push(ctx);
+  },
+});
 
 describe("card job", () => {
   it("sends the owner a card made from the PM's text", async () => {
@@ -235,12 +246,13 @@ describe("card job", () => {
     expect(telegram.copies).toHaveLength(1);
   });
 
-  it("does nothing for a message from the owner", async () => {
+  it("hands a message from the owner to the owner handler, without a card", async () => {
     requests.ctx = context({ sender: { personId: "o-1", role: "owner", name: "Владелец" } });
     const { extractor, inputs } = fakeExtractor();
     await handleCard({ messageId: "msg-1" }, deps(extractor));
     expect(inputs).toHaveLength(0);
     expect(telegram.sent).toHaveLength(0);
+    expect(ownerMessages.map((m) => m.messageId)).toEqual(["msg-1"]);
   });
 
   it("run twice: the owner gets the card once and the AI is called once", async () => {

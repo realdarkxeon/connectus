@@ -41,6 +41,17 @@ describe("ingest job", () => {
     expect(mediaJobs).toEqual(["msg-1"]);
   });
 
+  it("does not say 'получено' to the owner, but still passes the message on", async () => {
+    messages.messages.set(
+      "msg-1",
+      storedMessage({ kind: "text", externalFileId: null, senderRole: "owner" }),
+    );
+    await handleIngest({ messageId: "msg-1" }, { messages, telegram, enqueueMedia, enqueueCard });
+
+    expect(telegram.replies).toEqual([]);
+    expect(cardJobs).toEqual(["msg-1"]);
+  });
+
   it("starts the card job for every stored message", async () => {
     messages.messages.set("msg-1", storedMessage({ kind: "text", externalFileId: null }));
     await handleIngest({ messageId: "msg-1" }, { messages, telegram, enqueueMedia, enqueueCard });

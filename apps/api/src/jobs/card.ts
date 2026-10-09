@@ -30,6 +30,8 @@ export type CardDeps = {
   };
   extractor: CardExtractor;
   clock: Clock;
+  // The owner's own messages: replies to cards and commands (jobs/owner.ts).
+  ownerMessage(ctx: CardContext): Promise<void>;
 };
 
 // MVP S1: one PM message -> one card (or the raw message) -> the owner.
@@ -39,7 +41,8 @@ export type CardDeps = {
 export async function handleCard(job: CardJob, deps: CardDeps): Promise<void> {
   const ctx = await deps.requests.cardContext(job.messageId);
   if (!ctx) throw new Error(`message ${job.messageId} not found`);
-  if (ctx.sender.role !== "pm") return; // owner and deputy messages are not requests (S1)
+  if (ctx.sender.role === "owner") return deps.ownerMessage(ctx);
+  if (ctx.sender.role !== "pm") return; // deputies come later
 
   const requestId = await deps.requests.openRequest(ctx.messageId);
   let request = await deps.requests.request(requestId);

@@ -25,8 +25,19 @@ describe("toInboundMessage", () => {
       kind: "voice",
       text: null,
       externalFileId: "VOICE-1",
+      replyToExternalMessageId: null,
       receivedAt: new Date(1_791_270_000 * 1000),
     });
+  });
+
+  it("records which message a reply answers", () => {
+    const msg = toInboundMessage(
+      update({
+        text: "Закажите у другого поставщика",
+        reply_to_message: { message_id: 900, date: 1_791_269_000, chat: privateChat },
+      }),
+    );
+    expect(msg?.replyToExternalMessageId).toBe("1001:900");
   });
 
   it("translates a text message", () => {

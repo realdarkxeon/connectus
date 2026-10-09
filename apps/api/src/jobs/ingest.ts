@@ -19,6 +19,8 @@ export async function handleIngest(job: IngestJob, deps: IngestDeps): Promise<vo
 
   if (message.externalFileId && !message.mediaKey) await deps.enqueueMedia(message.id);
   await deps.enqueueCard(message.id);
+  // "получено" is for PMs; the owner's messages are replies and commands (MVP S2).
+  if (message.senderRole !== "pm") return;
 
   const { chatId, messageId } = parseTelegramMessageId(message.externalMessageId);
   await deps.telegram.reply(chatId, TEXTS.received, messageId);

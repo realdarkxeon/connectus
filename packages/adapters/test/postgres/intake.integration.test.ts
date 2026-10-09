@@ -29,6 +29,7 @@ function inbound(overrides: Partial<InboundMessage> = {}): InboundMessage {
     kind: "voice",
     text: null,
     externalFileId: "VOICE-FILE",
+    replyToExternalMessageId: null,
     receivedAt: new Date("2026-10-07T04:00:00Z"),
     ...overrides,
   };
@@ -100,6 +101,18 @@ describe("PostgresInboundStore", () => {
       external_file_id: "VOICE-FILE",
     });
     expect(await jobsFor(QUEUES.ingest, "messageId", result.messageId)).toBe(1);
+  });
+
+  it("keeps which message a reply answers", async () => {
+    const result = await store.storeInbound(
+      inbound({ kind: "text", externalFileId: null, replyToExternalMessageId: "777:900" }),
+    );
+    if (result.status !== "stored") throw new Error("not stored");
+    const row = await pool.query(
+      "select reply_to_external_message_id from public.message where id = $1",
+      [result.messageId],
+    );
+    expect(row.rows[0].reply_to_external_message_id).toBe("777:900");
   });
 
   it("ignores a duplicate delivery: still one message, one ticket", async () => {

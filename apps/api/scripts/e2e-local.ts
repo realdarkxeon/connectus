@@ -38,7 +38,7 @@ const SUPABASE_URL = env.API_URL as string;
 const SUPABASE_SECRET_KEY = (env.SECRET_KEY || env.SERVICE_ROLE_KEY) as string;
 
 // --- fake Telegram ---
-const sent: { chat_id: string; text: string }[] = [];
+const sent: { chat_id: string; text: string; message_id: number }[] = [];
 const copied: { chat_id: string; from_chat_id: string; message_id: number }[] = [];
 const answered: { id: string; text: string }[] = [];
 const edited: { chat_id: string; message_id: number; text: string }[] = [];
@@ -83,8 +83,8 @@ const fakeTelegram = createServer((req, res) => {
       reply(true);
     } else if (url.endsWith("/sendMessage")) {
       const params = JSON.parse(body || "{}");
-      sent.push({ chat_id: String(params.chat_id), text: params.text });
       nextMessageId += 1;
+      sent.push({ chat_id: String(params.chat_id), text: params.text, message_id: nextMessageId });
       reply({ message_id: nextMessageId, date: 0, chat: { id: params.chat_id, type: "private" } });
     } else {
       res.writeHead(404).end();
@@ -324,6 +324,35 @@ try {
   check(
     "decision recorded once, request in progress",
     decided.rows[0]?.status === "in_progress" && decided.rows[0]?.verdicts.join() === "approve",
+  );
+
+  // MVP S2: the owner answers by replying to the text card; the PM gets the exact words.
+  const ownerReply = update(OWNER_TELEGRAM_ID, {
+    text: "Закажите у другого поставщика",
+    reply_to_message: {
+      message_id: textCard?.message_id ?? 0,
+      date: Math.floor(Date.now() / 1000),
+      chat: { id: OWNER_TELEGRAM_ID, type: "private", first_name: "E2E" },
+    },
+  });
+  ownerReply.update_id += 20;
+  ownerReply.message.message_id += 20;
+  await knock(ownerReply, SECRET);
+  const forwarded = await waitFor(async () =>
+    sent.find(
+      (m) =>
+        m.chat_id === String(PM_TELEGRAM_ID) &&
+        m.text === "💬 Ответ владельца:\nЗакажите у другого поставщика",
+    ),
+  );
+  check("owner's reply to a card reaches the PM verbatim", forwarded !== undefined);
+  const confirmed = await waitFor(async () =>
+    sent.find((m) => m.chat_id === String(OWNER_TELEGRAM_ID) && m.text === "📨 Отправлено ПМ"),
+  );
+  check("owner sees 'Отправлено ПМ'", confirmed !== undefined);
+  check(
+    "owner got no 'получено'",
+    !sent.some((m) => m.chat_id === String(OWNER_TELEGRAM_ID) && m.text === "получено"),
   );
 } finally {
   for (const child of children) child.kill("SIGTERM");

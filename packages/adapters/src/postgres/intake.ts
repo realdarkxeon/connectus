@@ -73,8 +73,8 @@ export class PostgresInboundStore implements InboundStore {
     const inserted = await client.query<{ id: string }>(
       `insert into public.message
          (company_id, person_id, channel, external_message_id, kind, text,
-          external_file_id, received_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8)
+          external_file_id, reply_to_external_message_id, received_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        on conflict (channel, external_message_id) do nothing
        returning id`,
       [
@@ -85,6 +85,7 @@ export class PostgresInboundStore implements InboundStore {
         m.kind,
         m.text,
         m.externalFileId,
+        m.replyToExternalMessageId,
         m.receivedAt,
       ],
     );
