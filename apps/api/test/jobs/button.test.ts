@@ -28,6 +28,8 @@ const ctx: CardContext = {
   text: "арматуры не хватает",
   externalMessageId: "401614622:57",
   replyToExternalMessageId: null,
+  transcript: null,
+  externalFileId: null,
   sender: { personId: "pm-1", role: "pm", name: "Серик" },
   timezone: "Asia/Almaty",
   sites: [],

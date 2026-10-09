@@ -78,10 +78,16 @@ export function splitForTelegram(text: string, max = TELEGRAM_MAX): string[] {
 // The owner's message for a request: the card, or the PM's raw message when there is no card.
 export function ownerMessage(
   card: Card | null,
-  ctx: { sender: { name: string }; pmSite: string | null; text: string | null; timezone: string },
+  ctx: {
+    sender: { name: string };
+    pmSite: string | null;
+    text: string | null;
+    transcript?: string | null;
+    timezone: string;
+  },
 ): string {
   const pm: CardSender = { name: ctx.sender.name, workPackage: null, site: ctx.pmSite };
   return card
     ? formatOwnerCard(card, pm, ctx.timezone)
-    : formatRawFallback(pm, ctx.text?.trim() || CARD_TEXTS.noText);
+    : formatRawFallback(pm, ctx.text?.trim() || ctx.transcript?.trim() || CARD_TEXTS.noText);
 }

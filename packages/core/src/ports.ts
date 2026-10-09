@@ -57,3 +57,31 @@ export type Extraction = {
 export interface CardExtractor {
   extract(input: ExtractionInput): Promise<Extraction>;
 }
+
+// Speech to text (MVP S3). Audio in, verbatim text out, plus the invoice (hard rule 7).
+export type AudioFile = { bytes: Uint8Array; extension: string | null };
+
+export type SttFailure =
+  | { kind: "timeout" }
+  | { kind: "blocked" } // the provider refused our location (redirect to its restrictions page)
+  | { kind: "empty" } // nothing recognizable was said
+  | { kind: "api_error"; status: number | null; message: string | null };
+
+export type SttCallRecord = {
+  provider: string;
+  model: string;
+  attempts: number;
+  latencyMs: number;
+  audioSeconds: number;
+  costUsd: number;
+};
+
+export type Transcription = {
+  result: Result<{ text: string; language: string | null }, SttFailure>;
+  call: SttCallRecord;
+};
+
+export interface SpeechToText {
+  // hints: words to recognise more accurately (site jargon).
+  transcribe(audio: AudioFile, hints: readonly string[]): Promise<Transcription>;
+}

@@ -5,6 +5,7 @@ import {
   type Extraction,
   type MessageKind,
   type RequestStatus,
+  type SttCallRecord,
   transition,
 } from "@connectus/core";
 import type { Pool, PoolClient } from "pg";
@@ -15,7 +16,10 @@ export type CardContext = {
   requestId: string | null;
   kind: MessageKind;
   text: string | null;
+  // Speech-to-text result for a voice note (null until transcribed). Never logged.
+  transcript: string | null;
   externalMessageId: string;
+  externalFileId: string | null;
   replyToExternalMessageId: string | null;
   sender: { personId: string; role: "owner" | "deputy" | "pm"; name: string };
   timezone: string;
@@ -95,7 +99,8 @@ export class PostgresRequestRepo {
       }
     >(
       `select m.id as "messageId", m.company_id as "companyId", m.request_id as "requestId",
-              m.kind, m.text, m.external_message_id as "externalMessageId",
+              m.kind, m.text, m.transcript, m.external_message_id as "externalMessageId",
+              m.external_file_id as "externalFileId",
               m.reply_to_external_message_id as "replyToExternalMessageId",
               p.id as "personId", p.role, p.display_name as name, c.timezone
        from public.message m
@@ -156,6 +161,24 @@ export class PostgresRequestRepo {
       await this.move(client, requestId, m.company_id, "draft", [{ type: "window_closed" }]);
       return requestId;
     });
+  }
+
+  // The first transcript wins: a retried job never overwrites it (and never pays twice).
+  async saveTranscript(messageId: string, transcript: string): Promise<void> {
+    await this.pool.query(
+      "update public.message set transcript = $2 where id = $1 and transcript is null",
+      [messageId, transcript],
+    );
+  }
+
+  async recordSttCall(requestId: string, call: SttCallRecord, ok: boolean): Promise<void> {
+    await this.pool.query(
+      `insert into public.ai_call (company_id, request_id, provider, model, purpose, latency_ms,
+         tokens_in, tokens_out, cost_usd, ok)
+       select company_id, id, $2, $3, 'transcribe', $4, 0, 0, $5, $6
+       from public.request where id = $1`,
+      [requestId, call.provider, call.model, call.latencyMs, call.costUsd, ok],
+    );
   }
 
   async request(requestId: string): Promise<StoredRequest | null> {

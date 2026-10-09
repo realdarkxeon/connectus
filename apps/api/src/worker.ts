@@ -1,7 +1,9 @@
 import {
   type ButtonJob,
   type CardJob,
+  checkElevenLabs,
   createAnthropicExtractor,
+  createElevenLabsStt,
   ensureQueues,
   type IngestJob,
   type MediaJob,
@@ -13,7 +15,7 @@ import {
   TelegramClient,
   type UnroutedJob,
 } from "@connectus/adapters";
-import type { CardExtractor, Clock } from "@connectus/core";
+import type { CardExtractor, Clock, SpeechToText } from "@connectus/core";
 import pg from "pg";
 import { type Job, PgBoss } from "pg-boss";
 import { loadConfig, readCaCertificate, workerSchema } from "./config.ts";
@@ -49,6 +51,9 @@ const enqueueCard = async (messageId: string) => {
 };
 
 const clock: Clock = { now: () => new Date() };
+const stt: SpeechToText | undefined = config.ELEVENLABS_API_KEY
+  ? createElevenLabsStt({ apiKey: config.ELEVENLABS_API_KEY, timeoutMs: 60_000 })
+  : undefined;
 const requests = new PostgresRequestRepo(pool, clock);
 // Locally without a key, every card falls back to the raw message (config.ts).
 const extractor: CardExtractor = config.ANTHROPIC_API_KEY
@@ -112,6 +117,7 @@ await boss.work<CardJob>(
       requests,
       telegram,
       extractor,
+      ...(stt && { stt }),
       clock,
       ownerMessage: (ctx) => handleOwnerMessage(ctx, { requests, telegram, clock }),
     }),
@@ -130,7 +136,15 @@ for (const chatId of await requests.allOwnerChats()) {
       log.warn("owner menu not set", { error: error instanceof Error ? error.message : "unknown" }),
     );
 }
-log.info("worker started", { env: config.APP_ENV, cardModel: config.CARD_MODEL });
+// Can this server reach ElevenLabs with this key? One cheap call, logged as a status only.
+const sttStatus = config.ELEVENLABS_API_KEY
+  ? await checkElevenLabs(config.ELEVENLABS_API_KEY)
+  : "no key";
+log.info("worker started", {
+  env: config.APP_ENV,
+  cardModel: config.CARD_MODEL,
+  speechToText: sttStatus,
+});
 
 // Railway sends SIGTERM before replacing a deploy: let active jobs finish, then exit.
 for (const signal of ["SIGINT", "SIGTERM"] as const) {

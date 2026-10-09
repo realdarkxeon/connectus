@@ -5,6 +5,9 @@ import type {
   Extraction,
   ExtractionInput,
   RequestStatus,
+  SpeechToText,
+  SttCallRecord,
+  Transcription,
 } from "@connectus/core";
 import { beforeEach, describe, expect, it } from "vitest";
 import { type CardDeps, handleCard } from "../../src/jobs/card.ts";
@@ -32,6 +35,8 @@ const context = (overrides: Partial<CardContext> = {}): CardContext => ({
   text: "арматуры не хватает, 380 тыс",
   externalMessageId: "401614622:57",
   replyToExternalMessageId: null,
+  transcript: null,
+  externalFileId: null,
   sender: { personId: "pm-1", role: "pm", name: "Серик" },
   timezone: "Asia/Almaty",
   sites: ["ЖК Алтын"],
@@ -48,9 +53,19 @@ class FakeRequests {
   saves = 0;
   owners = ["1233584354"];
   failedReason: string | null = null;
+  transcripts = new Map<string, string>();
+  sttBills: { call: SttCallRecord; ok: boolean }[] = [];
+  async saveTranscript(messageId: string, text: string) {
+    if (!this.transcripts.has(messageId)) this.transcripts.set(messageId, text);
+  }
+  async recordSttCall(_r: string, call: SttCallRecord, ok: boolean) {
+    this.sttBills.push({ call, ok });
+  }
 
   async cardContext() {
-    return this.ctx;
+    return (
+      this.ctx && { ...this.ctx, transcript: this.transcripts.get(this.ctx.messageId) ?? null }
+    );
   }
   async openRequest() {
     this.req ??= { id: "req-1", companyId: "co-1", status: "structuring", card: null };
@@ -110,6 +125,11 @@ class FakeTelegram {
     this.nextId += 1;
     return this.nextId;
   }
+  downloads: string[] = [];
+  async download(fileId: string) {
+    this.downloads.push(fileId);
+    return { bytes: new Uint8Array([1, 2, 3]), extension: "oga" };
+  }
   async copy(to: string, from: string, messageId: number) {
     this.copies.push({ to, from, messageId });
     this.nextId += 1;
@@ -151,7 +171,28 @@ beforeEach(() => {
 });
 
 let ownerMessages: CardContext[] = [];
-const deps = (extractor: CardExtractor): CardDeps => ({
+
+const sttCall: SttCallRecord = {
+  provider: "elevenlabs",
+  model: "scribe_v2",
+  attempts: 1,
+  latencyMs: 1500,
+  audioSeconds: 20,
+  costUsd: 0.0015,
+};
+function fakeStt(result: Transcription["result"]) {
+  const calls: { hints: readonly string[] }[] = [];
+  const stt: SpeechToText = {
+    async transcribe(_audio, hints) {
+      calls.push({ hints });
+      return { result, call: sttCall };
+    },
+  };
+  return { stt, calls };
+}
+
+const deps = (extractor: CardExtractor, stt?: SpeechToText): CardDeps => ({
+  ...(stt && { stt }),
   requests,
   telegram,
   extractor,
@@ -244,7 +285,54 @@ describe("card job", () => {
     expect(telegram.sent[0]?.text).toContain("«арматуры не хватает, 380 тыс»");
   });
 
-  it("sends a voice note as a copy of the original, without calling the AI", async () => {
+  it("turns a voice note into a card from its transcript, and still copies the audio", async () => {
+    requests.ctx = context({ kind: "voice", text: null, externalFileId: "VOICE-1" });
+    const { extractor, inputs } = fakeExtractor();
+    const { stt, calls } = fakeStt({
+      ok: true,
+      value: { text: "бетон М300 не привезли", language: "rus" },
+    });
+    await handleCard({ messageId: "msg-1" }, deps(extractor, stt));
+    expect(telegram.downloads).toEqual(["VOICE-1"]);
+    expect(calls[0]?.hints).toContain("опалубка");
+    expect(requests.transcripts.get("msg-1")).toBe("бетон М300 не привезли");
+    expect(requests.sttBills).toEqual([{ call: sttCall, ok: true }]);
+    expect(inputs[0]?.messages).toEqual(["бетон М300 не привезли"]);
+    expect(telegram.sent[0]?.text).toContain("Докупить арматуру");
+    expect(telegram.copies).toHaveLength(1);
+  });
+
+  it("falls back to the audio when speech to text fails, and still records the bill", async () => {
+    requests.ctx = context({ kind: "voice", text: null, externalFileId: "VOICE-1" });
+    const { extractor, inputs } = fakeExtractor();
+    const { stt } = fakeStt({ ok: false, error: { kind: "blocked" } });
+    await handleCard({ messageId: "msg-1" }, deps(extractor, stt));
+    expect(inputs).toHaveLength(0);
+    expect(requests.failedReason).toBe("stt_blocked");
+    expect(requests.sttBills).toEqual([{ call: sttCall, ok: false }]);
+    expect(telegram.sent[0]?.text).toContain("(без текста, оригинал ниже)");
+    expect(telegram.copies).toHaveLength(1);
+  });
+
+  it("shows the transcript as the raw text when the card fails", async () => {
+    requests.ctx = context({ kind: "voice", text: null, externalFileId: "VOICE-1" });
+    const { extractor } = fakeExtractor({ ok: false, error: { kind: "timeout" } });
+    const { stt } = fakeStt({ ok: true, value: { text: "кран сломался", language: "rus" } });
+    await handleCard({ messageId: "msg-1" }, deps(extractor, stt));
+    expect(telegram.sent[0]?.text).toContain("«кран сломался»");
+  });
+
+  it("a retried job reuses the saved transcript and does not pay twice", async () => {
+    requests.ctx = context({ kind: "voice", text: null, externalFileId: "VOICE-1" });
+    requests.transcripts.set("msg-1", "уже расшифровано");
+    const { extractor, inputs } = fakeExtractor();
+    const { stt, calls } = fakeStt({ ok: true, value: { text: "x", language: null } });
+    await handleCard({ messageId: "msg-1" }, deps(extractor, stt));
+    expect(calls).toHaveLength(0);
+    expect(inputs[0]?.messages).toEqual(["уже расшифровано"]);
+  });
+
+  it("without speech to text configured, a voice note goes as the original (as in S1)", async () => {
     requests.ctx = context({ kind: "voice", text: null });
     const { extractor, inputs } = fakeExtractor();
     await handleCard({ messageId: "msg-1" }, deps(extractor));

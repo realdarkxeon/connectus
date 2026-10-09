@@ -4,9 +4,17 @@ import {
   type OwnerCardRef,
   parseTelegramMessageId,
   type SendOptions,
+  SITE_KEYTERMS,
   type StoredRequest,
 } from "@connectus/adapters";
-import type { CardExtractor, Clock, Extraction } from "@connectus/core";
+import type {
+  AudioFile,
+  CardExtractor,
+  Clock,
+  Extraction,
+  SpeechToText,
+  SttCallRecord,
+} from "@connectus/core";
 import { decisionButtons } from "../buttons.ts";
 import { log } from "../log.ts";
 import { ownerMessage, splitForTelegram } from "../owner-card.ts";
@@ -19,6 +27,8 @@ export type CardDeps = {
     request(requestId: string): Promise<StoredRequest | null>;
     saveExtraction(requestId: string, extraction: Extraction): Promise<"saved" | "already">;
     markCardFailed(requestId: string, reason: string): Promise<void>;
+    saveTranscript(messageId: string, transcript: string): Promise<void>;
+    recordSttCall(requestId: string, call: SttCallRecord, ok: boolean): Promise<void>;
     wasOwnerNotified(requestId: string): Promise<boolean>;
     markOwnerNotified(requestId: string, cards: OwnerCardRef[]): Promise<void>;
     ownerChats(companyId: string): Promise<string[]>;
@@ -27,8 +37,11 @@ export type CardDeps = {
     send(chatId: string, text: string, options?: SendOptions): Promise<number>;
     copy(toChatId: string, fromChatId: string, messageId: number): Promise<number>;
     profileUrl(userId: string): Promise<string | null>;
+    download(fileId: string): Promise<AudioFile>;
   };
   extractor: CardExtractor;
+  // Voice notes become text (MVP S3). Without it, they go to the owner as the original audio.
+  stt?: SpeechToText;
   clock: Clock;
   // The owner's own messages: replies to cards and commands (jobs/owner.ts).
   ownerMessage(ctx: CardContext): Promise<void>;
@@ -47,7 +60,8 @@ export async function handleCard(job: CardJob, deps: CardDeps): Promise<void> {
   const requestId = await deps.requests.openRequest(ctx.messageId);
   let request = await deps.requests.request(requestId);
   if (request?.status === "structuring") {
-    const text = ctx.text?.trim();
+    const voice = await voiceText(ctx, requestId, deps);
+    const text = ctx.text?.trim() || voice.text;
     if (text) {
       // The AI gets no names: the owner's card adds the sender from our own data.
       const extraction = await deps.extractor.extract({
@@ -59,7 +73,7 @@ export async function handleCard(job: CardJob, deps: CardDeps): Promise<void> {
       });
       await deps.requests.saveExtraction(requestId, extraction);
     } else {
-      await deps.requests.markCardFailed(requestId, "no_text");
+      await deps.requests.markCardFailed(requestId, voice.failure ?? "no_text");
     }
     request = await deps.requests.request(requestId);
   }
@@ -69,7 +83,9 @@ export async function handleCard(job: CardJob, deps: CardDeps): Promise<void> {
   const owners = await deps.requests.ownerChats(ctx.companyId);
   if (owners.length === 0) throw new Error(`company ${ctx.companyId} has no owner on Telegram`);
 
-  const text = ownerMessage(request.card, ctx);
+  // Re-read: a voice note may have just been transcribed (shown when there is no card).
+  const fresh = (await deps.requests.cardContext(ctx.messageId)) ?? ctx;
+  const text = ownerMessage(request.card, fresh);
   const original = parseTelegramMessageId(ctx.externalMessageId);
   // The PM's name links to their Telegram chat (in a private chat, the chat id is the user
   // id). No link when none would open; a failed lookup never stops the card.
@@ -123,4 +139,27 @@ async function sendWithLinkFallback(
     const { link: _, ...withoutLink } = options;
     return deps.telegram.send(chatId, text, withoutLink);
   }
+}
+
+// A voice note's words, from the saved transcript or from speech to text. A retried job finds
+// the saved transcript and does not pay again. Any failure returns no text, so the owner gets
+// the original audio instead (hard rule 1); the reason goes to the logbook.
+async function voiceText(
+  ctx: CardContext,
+  requestId: string,
+  deps: CardDeps,
+): Promise<{ text: string | null; failure?: string }> {
+  if (ctx.kind !== "voice") return { text: null };
+  if (ctx.transcript) return { text: ctx.transcript };
+  if (!deps.stt || !ctx.externalFileId) return { text: null };
+
+  const audio = await deps.telegram.download(ctx.externalFileId);
+  const result = await deps.stt.transcribe(audio, SITE_KEYTERMS);
+  await deps.requests.recordSttCall(requestId, result.call, result.result.ok);
+  if (!result.result.ok) {
+    log.warn("voice note not transcribed", { requestId, reason: result.result.error.kind });
+    return { text: null, failure: `stt_${result.result.error.kind}` };
+  }
+  await deps.requests.saveTranscript(ctx.messageId, result.result.value.text);
+  return { text: result.result.value.text };
 }

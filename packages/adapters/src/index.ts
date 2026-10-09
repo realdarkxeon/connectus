@@ -1,5 +1,7 @@
 export * from "./claude/extract.ts";
 export * from "./claude/pricing.ts";
+export * from "./elevenlabs/keyterms.ts";
+export * from "./elevenlabs/stt.ts";
 export * from "./postgres/connection.ts";
 export * from "./postgres/intake.ts";
 export * from "./postgres/messages.ts";

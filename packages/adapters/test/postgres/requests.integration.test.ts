@@ -109,6 +109,39 @@ describe("PostgresRequestRepo", () => {
     });
   });
 
+  it("keeps a transcript once and records the speech-to-text bill", async () => {
+    const messageId = await newMessage(null);
+    const requestId = await repo.openRequest(messageId);
+    await repo.saveTranscript(messageId, "бетон не привезли");
+    await repo.saveTranscript(messageId, "другой текст");
+    expect((await repo.cardContext(messageId))?.transcript).toBe("бетон не привезли");
+    await repo.recordSttCall(
+      requestId,
+      {
+        provider: "elevenlabs",
+        model: "scribe_v2",
+        attempts: 1,
+        latencyMs: 2100,
+        audioSeconds: 30,
+        costUsd: 0.0022,
+      },
+      true,
+    );
+    const ai = await pool.query(
+      "select provider, model, purpose, cost_usd, ok from public.ai_call where request_id = $1",
+      [requestId],
+    );
+    expect(ai.rows).toEqual([
+      {
+        provider: "elevenlabs",
+        model: "scribe_v2",
+        purpose: "transcribe",
+        cost_usd: "0.00220000",
+        ok: true,
+      },
+    ]);
+  });
+
   it("opens one request per message, even when run twice", async () => {
     const messageId = await newMessage();
     const first = await repo.openRequest(messageId);

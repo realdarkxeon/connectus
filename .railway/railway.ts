@@ -78,6 +78,8 @@ export default defineRailway((ctx, project) => {
       SUPABASE_SECRET_KEY: ctx.shared.SUPABASE_SECRET_KEY,
       // Card extraction (MVP S1). Required outside local; the worker refuses to start without it.
       ANTHROPIC_API_KEY: ctx.shared.ANTHROPIC_API_KEY,
+      // Voice notes -> text (MVP S3). Optional: if unset, voice notes go as the original audio.
+      ELEVENLABS_API_KEY: ctx.shared.ELEVENLABS_API_KEY,
     },
   });
 

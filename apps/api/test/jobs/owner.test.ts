@@ -20,6 +20,8 @@ const ownerMessage = (overrides: Partial<CardContext> = {}): CardContext => ({
   text: "Закажите у другого поставщика",
   externalMessageId: `${OWNER}:77`,
   replyToExternalMessageId: `${OWNER}:900`,
+  transcript: null,
+  externalFileId: null,
   sender: { personId: "owner-1", role: "owner", name: "Владелец" },
   timezone: "Asia/Almaty",
   sites: [],
