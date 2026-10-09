@@ -18,6 +18,7 @@ const set: EvalSet = {
       decideBy: null,
       workStopped: null,
       missing: [],
+      mustMention: [],
     },
   })),
 };
@@ -26,6 +27,7 @@ const card = (type: Card["type"]): Card => ({
   type,
   siteHint: null,
   summary: "s",
+  alsoMentioned: [],
   ask: null,
   options: [],
   amountKzt: null,

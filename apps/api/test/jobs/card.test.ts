@@ -13,6 +13,7 @@ const card: Card = {
   type: "spend_approval",
   siteHint: null,
   summary: "Докупить арматуру",
+  alsoMentioned: [],
   ask: "Одобрить 380 000 ₸?",
   options: [],
   amountKzt: 380000,

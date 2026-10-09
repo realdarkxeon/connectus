@@ -10,7 +10,8 @@ export const RequestType = z.enum([
 export const Card = z.object({
   type: RequestType,
   siteHint: z.string().nullable(),
-  summary: z.string().max(200),            // Russian, one line
+  summary: z.string().max(200),            // Russian, one line: the most serious issue
+  alsoMentioned: z.array(z.string().max(200)).max(3).default([]), // other issues, none dropped
   ask: z.string().nullable(),              // decision answerable by approve/reject
   options: z.array(z.string()).max(4),
   amountKzt: z.int().nullable(),           // safe integer KZT

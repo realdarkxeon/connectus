@@ -40,6 +40,9 @@ export function formatOwnerCard(card: Card, pm: CardSender, timeZone: string): s
     "",
     card.summary,
   ];
+  // Cards saved before alsoMentioned existed have no such field.
+  const also = card.alsoMentioned ?? [];
+  if (also.length > 0) lines.push(`${CARD_TEXTS.also}: ${also.join("; ")}`);
   const facts: string[] = [];
   if (card.ask) facts.push(`❓ ${card.ask}`);
   if (card.amountKzt !== null) facts.push(`${CARD_TEXTS.amount}: ${kzt(card.amountKzt)}`);

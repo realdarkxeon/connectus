@@ -5,6 +5,7 @@ const validCard = {
   type: "spend_approval",
   siteHint: "ЖК Алтын",
   summary: "Докупить арматуру Ø12, не хватает на захватку 3",
+  alsoMentioned: [],
   ask: "Одобрить закупку арматуры на 380 000 ₸?",
   options: [],
   amountKzt: 380000,
@@ -60,6 +61,21 @@ describe("parseCard", () => {
 
   it("rejects a summary longer than 200 characters", () => {
     expect(parseWith({ summary: "а".repeat(201) }).ok).toBe(false);
+  });
+
+  it("keeps other issues from the same message (alsoMentioned)", () => {
+    const result = parseWith({ alsoMentioned: ["работник плохо себя чувствует"] });
+    expect(result.ok && result.value.alsoMentioned).toEqual(["работник плохо себя чувствует"]);
+  });
+
+  it("treats a card saved before alsoMentioned existed as having none", () => {
+    const { alsoMentioned: _, ...old } = validCard;
+    const result = parseCard(old);
+    expect(result.ok && result.value.alsoMentioned).toEqual([]);
+  });
+
+  it("rejects more than 3 other issues", () => {
+    expect(parseWith({ alsoMentioned: ["a", "b", "c", "d"] }).ok).toBe(false);
   });
 
   it("rejects more than 4 options", () => {

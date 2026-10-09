@@ -17,7 +17,10 @@ export type RequestType = z.infer<typeof RequestType>;
 export const Card = z.object({
   type: RequestType,
   siteHint: z.string().nullable(),
-  summary: z.string().max(200), // Russian, one line
+  summary: z.string().max(200), // Russian, one line: the most serious issue
+  // Other issues in the same message, so none is dropped (MVP: one card per message).
+  // Defaults to [] so cards saved before this field still parse.
+  alsoMentioned: z.array(z.string().max(200)).max(3).default([]),
   ask: z.string().nullable(), // decision answerable by approve/reject
   options: z.array(z.string()).max(4),
   amountKzt: z.int().nullable(), // integer KZT, hard rule 5

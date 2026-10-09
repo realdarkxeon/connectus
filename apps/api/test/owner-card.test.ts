@@ -6,6 +6,7 @@ const card: Card = {
   type: "spend_approval",
   siteHint: "ЖК Алтын",
   summary: "Докупить арматуру Ø12 на захватку 3",
+  alsoMentioned: [],
   ask: "Одобрить закупку на 380 000 ₸?",
   options: [],
   amountKzt: 380000,
@@ -48,6 +49,22 @@ describe("formatOwnerCard", () => {
         "Докупить арматуру Ø12 на захватку 3",
       ].join("\n"),
     );
+  });
+
+  it("lists other issues from the same message under the summary", () => {
+    const text = formatOwnerCard(
+      { ...card, alsoMentioned: ["работник плохо себя чувствует", "кран на ремонте"] },
+      pm,
+      "Asia/Almaty",
+    );
+    expect(text).toContain(
+      "Докупить арматуру Ø12 на захватку 3\nТакже: работник плохо себя чувствует; кран на ремонте",
+    );
+  });
+
+  it("shows a card saved before alsoMentioned existed", () => {
+    const { alsoMentioned: _, ...old } = card;
+    expect(formatOwnerCard(old as typeof card, pm, "Asia/Almaty")).not.toContain("Также");
   });
 
   it("starts a safety card so it cannot be missed", () => {

@@ -21,6 +21,7 @@ const modelCard = {
   type: "spend_approval",
   siteHint: "ЖК Алтын",
   summary: "Докупить арматуру",
+  alsoMentioned: [],
   ask: "Одобрить закупку на 380 000 ₸?",
   options: [],
   amountKzt: 380000,
@@ -78,7 +79,7 @@ describe("Claude card extractor", () => {
     expect(out.repaired).toBe(false);
     expect(out.call).toMatchObject({
       model: "claude-haiku-4-5",
-      promptVersion: "extract.v2",
+      promptVersion: "extract.v3",
       attempts: 1,
       inputTokens: 1500,
       outputTokens: 300,

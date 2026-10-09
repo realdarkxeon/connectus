@@ -20,6 +20,7 @@ export const CARD_TEXTS = {
     info_report: "ℹ️ Отчёт",
   },
   from: "От",
+  also: "Также",
   amount: "Сумма",
   decideBy: "Срок решения",
   notStated: "Не указано",
