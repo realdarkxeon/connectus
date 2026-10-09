@@ -9,43 +9,58 @@ let messages: FakeMessages;
 let telegram: FakeTelegram;
 let storage: FakeStorage;
 let mediaJobs: string[];
+let cardJobs: string[];
 
 beforeEach(() => {
   messages = new FakeMessages();
   telegram = new FakeTelegram();
   storage = new FakeStorage();
   mediaJobs = [];
+  cardJobs = [];
 });
 
 const enqueueMedia = async (messageId: string) => {
   mediaJobs.push(messageId);
 };
+const enqueueCard = async (messageId: string) => {
+  cardJobs.push(messageId);
+};
 
 describe("ingest job", () => {
   it("replies 'получено' to the PM, as a reply to their message", async () => {
     messages.messages.set("msg-1", storedMessage());
-    await handleIngest({ messageId: "msg-1" }, { messages, telegram, enqueueMedia });
+    await handleIngest({ messageId: "msg-1" }, { messages, telegram, enqueueMedia, enqueueCard });
 
     expect(telegram.replies).toEqual([{ chatId: "1001", text: TEXTS.received, replyTo: 57 }]);
   });
 
   it("starts the media download for a voice note", async () => {
     messages.messages.set("msg-1", storedMessage());
-    await handleIngest({ messageId: "msg-1" }, { messages, telegram, enqueueMedia });
+    await handleIngest({ messageId: "msg-1" }, { messages, telegram, enqueueMedia, enqueueCard });
 
     expect(mediaJobs).toEqual(["msg-1"]);
   });
 
+  it("starts the card job for every stored message", async () => {
+    messages.messages.set("msg-1", storedMessage({ kind: "text", externalFileId: null }));
+    await handleIngest({ messageId: "msg-1" }, { messages, telegram, enqueueMedia, enqueueCard });
+
+    expect(cardJobs).toEqual(["msg-1"]);
+  });
+
   it("starts no media download for a plain text message", async () => {
     messages.messages.set("msg-1", storedMessage({ kind: "text", externalFileId: null }));
-    await handleIngest({ messageId: "msg-1" }, { messages, telegram, enqueueMedia });
+    await handleIngest({ messageId: "msg-1" }, { messages, telegram, enqueueMedia, enqueueCard });
 
     expect(mediaJobs).toEqual([]);
     expect(telegram.replies).toHaveLength(1);
   });
 
   it("fails (so the job is retried) if the message cannot be found", async () => {
-    const run = handleIngest({ messageId: "missing" }, { messages, telegram, enqueueMedia });
+    const run = handleIngest(
+      { messageId: "missing" },
+      { messages, telegram, enqueueMedia, enqueueCard },
+    );
     await expect(run).rejects.toThrow("message missing not found");
     expect(telegram.replies).toEqual([]);
   });

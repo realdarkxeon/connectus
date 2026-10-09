@@ -36,6 +36,12 @@ export class TelegramClient {
     });
   }
 
+  // Copies a message (voice, photo, file) from one chat to another, without a "forwarded"
+  // link. The owner gets the PM's original exactly as sent.
+  async copy(toChatId: string, fromChatId: string, messageId: number): Promise<void> {
+    await this.api.copyMessage(toChatId, fromChatId, messageId);
+  }
+
   // Telegram guarantees the download link for at least 1 hour; bots can fetch up to 20 MB.
   async download(fileId: string): Promise<DownloadedFile> {
     const file = await this.api.getFile(fileId);

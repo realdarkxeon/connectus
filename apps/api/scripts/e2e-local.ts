@@ -1,6 +1,7 @@
-// Local end-to-end rehearsal of Step 3, with no real Telegram and no real secrets:
-// fake Telegram -> real api process -> local Postgres -> real worker process -> fake Telegram
-// replies + local Supabase Storage. Needs `pnpm db:start`. Run with `pnpm e2e:local`.
+// Local end-to-end rehearsal of Step 3 and MVP S1, with no real Telegram, no real secrets
+// and no AI: fake Telegram -> real api process -> local Postgres -> real worker process ->
+// fake Telegram replies, owner cards + local Supabase Storage. Needs `pnpm db:start`.
+// Run with `pnpm e2e:local`.
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { openSync } from "node:fs";
 import { createServer } from "node:http";
@@ -13,10 +14,12 @@ const FAKE_TG_PORT = 8091;
 const API_PORT = 3010;
 const PM_TELEGRAM_ID = 900000001;
 const STRANGER_TELEGRAM_ID = 900000002;
+const OWNER_TELEGRAM_ID = 900000003;
 const VOICE_BYTES = Buffer.from("OggS fake voice note for the e2e check");
 const ids = {
   company: "e2e00000-0000-4000-8000-000000000001",
   person: "e2e00000-0000-4000-8000-000000000002",
+  owner: "e2e00000-0000-4000-8000-000000000003",
 };
 
 // --- local Supabase settings (local demo values, not real secrets) ---
@@ -36,6 +39,7 @@ const SUPABASE_SECRET_KEY = (env.SECRET_KEY || env.SERVICE_ROLE_KEY) as string;
 
 // --- fake Telegram ---
 const sent: { chat_id: string; text: string }[] = [];
+const copied: { chat_id: string; from_chat_id: string; message_id: number }[] = [];
 const fakeTelegram = createServer((req, res) => {
   let body = "";
   req.on("data", (chunk) => {
@@ -54,6 +58,14 @@ const fakeTelegram = createServer((req, res) => {
       reply({ id: 42, is_bot: true, first_name: "E2E", username: "e2e_bot" });
     } else if (url.endsWith("/getFile")) {
       reply({ file_id: "VOICE-E2E", file_unique_id: "u", file_path: "voice/file_1.oga" });
+    } else if (url.endsWith("/copyMessage")) {
+      const params = JSON.parse(body || "{}");
+      copied.push({
+        chat_id: String(params.chat_id),
+        from_chat_id: String(params.from_chat_id),
+        message_id: params.message_id,
+      });
+      reply({ message_id: 2 });
     } else if (url.endsWith("/sendMessage")) {
       const params = JSON.parse(body || "{}");
       sent.push({ chat_id: String(params.chat_id), text: params.text });
@@ -65,7 +77,7 @@ const fakeTelegram = createServer((req, res) => {
 });
 await new Promise<void>((resolve) => fakeTelegram.listen(FAKE_TG_PORT, resolve));
 
-// --- fixtures: one company with one registered PM ---
+// --- fixtures: one company with one registered PM and its owner ---
 const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
 await pool.query(
   "insert into public.company (id, name) values ($1, 'E2E Строй') on conflict do nothing",
@@ -81,9 +93,19 @@ await pool.query(
    values ($1, $2, 'telegram', $3) on conflict do nothing`,
   [ids.company, ids.person, String(PM_TELEGRAM_ID)],
 );
+await pool.query(
+  `insert into public.person (id, company_id, role, display_name)
+   values ($1, $2, 'owner', 'E2E Владелец') on conflict do nothing`,
+  [ids.owner, ids.company],
+);
+await pool.query(
+  `insert into public.channel_identity (company_id, person_id, channel, external_id)
+   values ($1, $2, 'telegram', $3) on conflict do nothing`,
+  [ids.company, ids.owner, String(OWNER_TELEGRAM_ID)],
+);
 
 // --- start the real api and worker processes ---
-const childEnv = {
+const childEnv: NodeJS.ProcessEnv = {
   ...process.env,
   NODE_ENV: "development",
   APP_ENV: "local",
@@ -95,6 +117,8 @@ const childEnv = {
   TELEGRAM_WEBHOOK_SECRET: SECRET,
   TELEGRAM_API_ROOT: `http://127.0.0.1:${FAKE_TG_PORT}`,
 };
+// Never call the real AI from the rehearsal: cards fall back to the raw message.
+delete childEnv.ANTHROPIC_API_KEY;
 // Process logs go to files, for when a check fails.
 const logDir = process.env.E2E_LOG_DIR ?? "/tmp";
 const children: ChildProcess[] = ["server", "worker"].map((name) => {
@@ -155,6 +179,10 @@ try {
   );
   check("duplicate delivery still answers 200", (await knock(voice, SECRET)).status === 200);
   await knock(update(STRANGER_TELEGRAM_ID, { text: "Здравствуйте" }), SECRET);
+  const textUpdate = update(PM_TELEGRAM_ID, { text: "Арматуры не хватает, 380 тыс" });
+  textUpdate.update_id += 1;
+  textUpdate.message.message_id += 1;
+  await knock(textUpdate, SECRET);
 
   const externalId = `${PM_TELEGRAM_ID}:${messageNumber}`;
   const rows = await pool.query("select id from public.message where external_message_id = $1", [
@@ -195,6 +223,47 @@ try {
     [`${STRANGER_TELEGRAM_ID}:${messageNumber}`],
   );
   check("unknown sender's message is in the waiting room", waiting.rowCount === 1);
+
+  // MVP S1: the owner gets every PM message as a card or as the raw message.
+  const owner = String(OWNER_TELEGRAM_ID);
+  const voiceCard = await waitFor(async () =>
+    sent.find((m) => m.chat_id === owner && m.text.includes("(без текста, оригинал ниже)")),
+  );
+  check("owner got a card for the voice note", voiceCard !== undefined);
+  // Only this run's messages: a job left over from an earlier run may also arrive.
+  const copy = await waitFor(async () =>
+    copied.find((c) => c.chat_id === owner && c.message_id === messageNumber),
+  );
+  check(
+    "owner got a copy of the original voice note",
+    copy?.from_chat_id === String(PM_TELEGRAM_ID),
+  );
+  const textCard = await waitFor(async () =>
+    sent.find((m) => m.chat_id === owner && m.text.includes("«Арматуры не хватает, 380 тыс»")),
+  );
+  check("owner got the PM's text (raw: no AI in the rehearsal)", textCard !== undefined);
+  const logbook = await waitFor(async () => {
+    const r = await pool.query<{ type: string }>(
+      `select e.type from public.event e
+       join public.message m on m.request_id = e.request_id
+       where m.external_message_id = $1 order by e.id`,
+      [externalId],
+    );
+    const types = r.rows.map((row) => row.type);
+    return types.includes("owner_notified") ? types : undefined;
+  });
+  check(
+    `logbook for the voice note: ${logbook?.join(" -> ") ?? "none"}`,
+    logbook?.join(",") === "window_closed,card_failed,owner_notified",
+  );
+  // Counted per message in the logbook, not in the fake inbox (old retries may land there).
+  const receipts = await pool.query<{ n: number }>(
+    `select count(*)::int as n from public.event e
+     join public.message m on m.request_id = e.request_id
+     where m.external_message_id = any($1) and e.type = 'owner_notified'`,
+    [[externalId, `${PM_TELEGRAM_ID}:${messageNumber + 1}`]],
+  );
+  check("owner notified exactly once per message", receipts.rows[0]?.n === 2);
 } finally {
   for (const child of children) child.kill("SIGTERM");
   fakeTelegram.close();

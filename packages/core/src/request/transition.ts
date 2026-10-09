@@ -10,6 +10,9 @@ export type Command =
   | { type: "window_closed" }
   | { type: "fields_missing"; missing: string[] }
   | { type: "card_complete" }
+  // No valid card (AI failed or timed out): the owner gets the raw text instead (hard rule 1).
+  // reason is the failure kind, never message text.
+  | { type: "card_failed"; reason: string }
   | { type: "pm_answered" }
   | { type: "clarify_timed_out" }
   | { type: "duplicate_found"; ofRequestId: string }
@@ -30,6 +33,7 @@ const commandTypes: Record<CommandType, true> = {
   window_closed: true,
   fields_missing: true,
   card_complete: true,
+  card_failed: true,
   pm_answered: true,
   clarify_timed_out: true,
   duplicate_found: true,
@@ -50,7 +54,11 @@ export const ALLOWED_TRANSITIONS: Record<
   Partial<Record<CommandType, RequestStatus>>
 > = {
   draft: { message_added: "draft", noise_detected: "discarded", window_closed: "structuring" },
-  structuring: { fields_missing: "clarifying", card_complete: "triage" },
+  structuring: {
+    fields_missing: "clarifying",
+    card_complete: "triage",
+    card_failed: "awaiting_owner",
+  },
   clarifying: { pm_answered: "structuring", clarify_timed_out: "triage" },
   triage: {
     duplicate_found: "merged",

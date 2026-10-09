@@ -28,6 +28,8 @@ function sampleCommand(type: CommandType): Command {
       return { type, question: "Какой поставщик?" };
     case "completed_with_photo":
       return { type, photoMediaKey: "media/photo-1.jpg" };
+    case "card_failed":
+      return { type, reason: "timeout" };
     default:
       return { type };
   }
@@ -41,6 +43,7 @@ const expectedMoves: [RequestStatus, CommandType, RequestStatus][] = [
   ["draft", "window_closed", "structuring"],
   ["structuring", "fields_missing", "clarifying"],
   ["structuring", "card_complete", "triage"],
+  ["structuring", "card_failed", "awaiting_owner"],
   ["clarifying", "pm_answered", "structuring"],
   ["clarifying", "clarify_timed_out", "triage"],
   ["triage", "duplicate_found", "merged"],
@@ -129,6 +132,18 @@ describe("logbook entry (EVENT)", () => {
   it("carries the command details in the payload", () => {
     const result = transition("triage", { type: "duplicate_found", ofRequestId: "req-7" }, clock);
     expect(result.ok && result.value.event.payload).toEqual({ ofRequestId: "req-7" });
+  });
+
+  it("records why the card failed, so the owner got raw text (hard rule 1)", () => {
+    const result = transition(
+      "structuring",
+      { type: "card_failed", reason: "invalid_card" },
+      clock,
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      value: { to: "awaiting_owner", event: { payload: { reason: "invalid_card" } } },
+    });
   });
 
   it("marks a request forwarded after clarification timeout as incomplete", () => {

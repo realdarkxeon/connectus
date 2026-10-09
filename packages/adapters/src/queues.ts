@@ -5,12 +5,14 @@ export const QUEUES = {
   ingest: "ingest", // a known PM's message was saved: reply "получено", start media download
   media: "media", // copy a Telegram file into Storage
   unrouted: "unrouted", // a message from an unknown account: reply politely
+  card: "card", // turn a PM's message into a card and send it to the owner (MVP S1)
   failed: "failed", // dead letters: jobs that failed every retry, for a human to inspect
 } as const;
 
 export type IngestJob = { messageId: string };
 export type MediaJob = { messageId: string };
 export type UnroutedJob = { unroutedId: string };
+export type CardJob = { messageId: string };
 
 // Provider down: retry with backoff (5 attempts), then dead-letter (docs/architecture.md).
 const retryPolicy = {
@@ -27,4 +29,5 @@ export async function ensureQueues(boss: PgBoss): Promise<void> {
   await boss.createQueue(QUEUES.ingest, retryPolicy);
   await boss.createQueue(QUEUES.media, retryPolicy);
   await boss.createQueue(QUEUES.unrouted, retryPolicy);
+  await boss.createQueue(QUEUES.card, retryPolicy);
 }
