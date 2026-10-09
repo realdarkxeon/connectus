@@ -1,7 +1,7 @@
 -- Tripwires for every current and future table in public (hard rule 6).
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(7);
+select plan(8);
 
 select is(
   array(
@@ -59,6 +59,13 @@ select ok(
   not has_table_privilege('anon', 'private.unrouted_message', 'select, insert, update, delete')
   and not has_table_privilege('authenticated', 'private.unrouted_message', 'select, insert, update, delete'),
   'no client role can touch the waiting room'
+);
+
+-- Invite links are keys to a company; bot prompts are internal. No client may read them.
+select ok(
+  not has_table_privilege('authenticated', 'public.invite', 'select')
+  and not has_table_privilege('authenticated', 'public.bot_prompt', 'select'),
+  'no client role can read invites or bot prompts'
 );
 
 select is(
