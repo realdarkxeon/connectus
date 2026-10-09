@@ -23,6 +23,9 @@ back to `main`.
 - **S2 done:** the owner taps ✅/❌ (first tap wins, PM told once, the decided card leaves
   the owner's chat), answers by replying to a card (PM gets it verbatim), uses `/pending`,
   `/active`, `/history`. The PM's name links to their chat (needs a Telegram username).
+- **S3 done:** voice notes become cards: Soniox speech to text (ru + kk hints, site jargon
+  as context terms, files deleted from Soniox after each run), then the card, then the
+  original audio. About 0.3 cents per voice message in total.
 - Live on staging and tested by Darkhan with two accounts: PM `401614622`, owner
   `1233584354`, company "Staging Test Co".
 
@@ -35,8 +38,8 @@ Latest: type, amount, deadline 12/12, nothing dropped 12/12, safety 3/3, missing
 
 ## Open items
 
-1. **S3 next: voice notes -> text -> cards.** Needs a speech-to-text provider: bring 2-3
-   options with prices and Russian quality first (decision "STT chosen by benchmark").
+1. **S4 next: add a PM with one command** and attach their waiting-room messages; set the
+   owner menu on registration too.
 2. **Missing-facts redesign** (parked): the AI keeps asking for facts the PM gave. Idea:
    the AI fills fields, core code decides what is missing. Changes the Card: needs a yes.
 3. **Railway free plan:** upgrade to Hobby and set `sleepApplication: false` in
@@ -58,8 +61,8 @@ nvm use 24              # the project needs Node 24
 git switch mvp
 # start Docker Desktop
 pnpm db:start           # local Supabase
-pnpm test               # should say 420 passed
-pnpm test:integration   # should say 29 passed
+pnpm test               # should say 433 passed
+pnpm test:integration   # should say 30 passed
 pnpm e2e:local          # should say "All checks passed."
 ```
 

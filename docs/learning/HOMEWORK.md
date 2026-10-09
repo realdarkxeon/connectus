@@ -127,3 +127,12 @@ then undo with `git checkout -- <file>`. Never commit these changes.
 
 Pick any ★★ term from `GLOSSARY.md` and read its "Dig deeper" link for 15 minutes. Bring
 one question to the next session.
+
+## Lesson 10: voice notes (MVP S3)
+
+- [ ] **Explain-back.** Why does the adapter delete the audio file from Soniox right after
+  each transcription? Which hard rule or data concern does it protect?
+  *Done when:* you mention "PM voices are personal data".
+- [ ] **Find the bill.** In Supabase (staging), table `ai_call`: find your voice note's two
+  rows (purpose `transcribe` and `extract_card:extract.v3`). *Done when:* you can say which
+  step costs more and roughly how much a voice message costs in total.

@@ -55,8 +55,8 @@ photo, WhatsApp, Mini App, owner rules (docs/decisions.md).
 - [x] S2. Owner: ✅/❌ buttons (first tap wins; PM told once; decided card leaves the chat),
       reply to a card -> PM verbatim, /pending /active /history, PM name links to t.me.
       Live on staging 2026-10-09
-- [ ] S3. Voice notes -> text -> real cards. Pick a speech-to-text provider (2-3 options
-      with prices first)
+- [x] S3. Voice notes -> text -> real cards. Soniox stt-async-v5 (ElevenLabs refused our
+      location). Live on staging 2026-10-09: transcript 1.1 s, $0.00014; card $0.003
 - [ ] S4. Add a PM with one command; attach their waiting-room messages
 - [ ] S5. Pilot-ready: Railway Hobby + sleepApplication false, production bot, Sentry,
       consent form, one real PM for a week
