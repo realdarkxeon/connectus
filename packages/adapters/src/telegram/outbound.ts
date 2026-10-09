@@ -21,6 +21,8 @@ export type SendOptions = {
   // Makes part of the text a link (offset and length in UTF-16 units, as Telegram counts).
   link?: { offset: number; length: number; url: string };
   replyTo?: number;
+  // Opens the reply box under this message, so the owner's answer is a reply to it.
+  forceReply?: boolean;
 };
 
 // Sending and downloading through the Telegram Bot API. Never log or rethrow anything that
@@ -47,8 +49,9 @@ export class TelegramClient {
 
   // Sends a message and returns its id, needed later to edit it or match replies to it.
   async send(chatId: string, text: string, options: SendOptions = {}): Promise<number> {
-    const { buttons, link, replyTo } = options;
+    const { buttons, link, replyTo, forceReply } = options;
     const sent = await this.api.sendMessage(chatId, text, {
+      ...(forceReply && { reply_markup: { force_reply: true } }),
       ...(buttons && {
         reply_markup: {
           inline_keyboard: buttons.map((row) =>
@@ -64,6 +67,13 @@ export class TelegramClient {
       }),
     });
     return sent.message_id;
+  }
+
+  // The bot's own @username, for t.me invite links. Asked once, then remembered.
+  private username: string | undefined;
+  async botUsername(): Promise<string> {
+    this.username ??= (await this.api.getMe()).username;
+    return this.username;
   }
 
   // A link that opens a chat with this user, or null if none would work. A username link

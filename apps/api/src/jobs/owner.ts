@@ -2,14 +2,19 @@ import {
   type CardContext,
   type ListItem,
   type ListKind,
+  type PmPage,
+  type Prompt,
   parseTelegramMessageId,
   type SendOptions,
+  type SiteSummary,
   type StoredRequest,
+  type TeamMember,
 } from "@connectus/adapters";
 import type { Clock } from "@connectus/core";
 import { splitForTelegram } from "../owner-card.ts";
 import { formatList } from "../owner-lists.ts";
-import { OWNER_TEXTS } from "../texts.ts";
+import { pmView, sitesView, teamView } from "../team-views.ts";
+import { OWNER_TEXTS, TEAM_TEXTS } from "../texts.ts";
 
 export type OwnerDeps = {
   requests: {
@@ -26,6 +31,15 @@ export type OwnerDeps = {
     copy(toChatId: string, fromChatId: string, messageId: number): Promise<number>;
   };
   clock: Clock;
+  team: {
+    takePrompt(chatId: string, messageId: number): Promise<Prompt | null>;
+    createSite(companyId: string, name: string): Promise<string>;
+    renamePm(companyId: string, personId: string, name: string): Promise<boolean>;
+    setWorkPackage(companyId: string, personId: string, work: string | null): Promise<boolean>;
+    listTeam(companyId: string): Promise<TeamMember[]>;
+    listSites(companyId: string): Promise<SiteSummary[]>;
+    pmDetails(companyId: string, personId: string): Promise<PmPage | null>;
+  };
 };
 
 const COMMANDS: Record<string, ListKind> = {
@@ -50,10 +64,29 @@ export async function handleOwnerMessage(ctx: CardContext, deps: OwnerDeps): Pro
     await deps.telegram.send(owner.chatId, text, { buttons });
     return;
   }
+  if (command === "/team") {
+    const view = teamView(await deps.team.listTeam(ctx.companyId));
+    await deps.telegram.send(owner.chatId, view.text, { buttons: view.buttons });
+    return;
+  }
+  if (command === "/sites") {
+    const view = sitesView(await deps.team.listSites(ctx.companyId));
+    await deps.telegram.send(owner.chatId, view.text, { buttons: view.buttons });
+    return;
+  }
 
   const repliedTo = ctx.replyToExternalMessageId
     ? parseTelegramMessageId(ctx.replyToExternalMessageId)
     : null;
+
+  // An answer to a question the bot asked (site name, PM name, work package).
+  const prompt = repliedTo
+    ? await deps.team.takePrompt(repliedTo.chatId, repliedTo.messageId)
+    : null;
+  if (prompt && prompt.companyId === ctx.companyId) {
+    await answerPrompt(prompt, ctx.text?.trim() ?? "", owner.chatId, ctx, deps);
+    return;
+  }
   const requestId = repliedTo
     ? await deps.requests.requestForOwnerCard(repliedTo.chatId, repliedTo.messageId)
     : null;
@@ -83,4 +116,35 @@ export async function handleOwnerMessage(ctx: CardContext, deps: OwnerDeps): Pro
   // Written right after sending: a crash in between repeats the reply once, never loses it.
   await deps.requests.markReplyForwarded(requestId, ctx.messageId);
   await deps.telegram.send(owner.chatId, OWNER_TEXTS.replySent, { replyTo: owner.messageId });
+}
+
+// Saves the owner's answer and shows the screen it belongs to.
+async function answerPrompt(
+  prompt: Prompt,
+  text: string,
+  chatId: string,
+  ctx: CardContext,
+  deps: OwnerDeps,
+): Promise<void> {
+  if (!text) {
+    await deps.telegram.send(chatId, OWNER_TEXTS.hint, {});
+    return;
+  }
+  const co = ctx.companyId;
+  if (prompt.kind === "site_name") {
+    await deps.team.createSite(co, text);
+    await deps.telegram.send(chatId, TEAM_TEXTS.saved, {});
+    const view = sitesView(await deps.team.listSites(co));
+    await deps.telegram.send(chatId, view.text, { buttons: view.buttons });
+    return;
+  }
+  if (!prompt.subjectId) return;
+  if (prompt.kind === "pm_name") await deps.team.renamePm(co, prompt.subjectId, text);
+  else await deps.team.setWorkPackage(co, prompt.subjectId, text);
+  await deps.telegram.send(chatId, TEAM_TEXTS.saved, {});
+  const page = await deps.team.pmDetails(co, prompt.subjectId);
+  if (page) {
+    const view = pmView(page, ctx.timezone);
+    await deps.telegram.send(chatId, view.text, { buttons: view.buttons });
+  }
 }

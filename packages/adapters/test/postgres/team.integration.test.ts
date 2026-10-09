@@ -137,3 +137,102 @@ describe("invites", () => {
     expect(byId[start]).toBeNull(); // the /start itself is not a request
   });
 });
+
+describe("team management", () => {
+  let co: string;
+  let owner: string;
+  let otherCo: string;
+
+  beforeAll(async () => {
+    co = randomUUID();
+    owner = randomUUID();
+    otherCo = randomUUID();
+    await pool.query(
+      "insert into public.company (id, name) values ($1, 'Manage Co'), ($2, 'Other Co')",
+      [co, otherCo],
+    );
+    await pool.query(
+      "insert into public.person (id, company_id, role, display_name) values ($1, $2, 'owner', 'Владелец')",
+      [owner, co],
+    );
+  });
+
+  const join = async (name: string) => {
+    const r = await repo.redeemInvite(await repo.createInvite(co, owner), tg(), name);
+    if (r.status !== "joined") throw new Error("not joined");
+    return r.personId;
+  };
+
+  it("creates sites once per name and lists the team with their sites", async () => {
+    const altyn = await repo.createSite(co, "ЖК Алтын");
+    expect(await repo.createSite(co, "  жк алтын ")).toBe(altyn);
+    const samal = await repo.createSite(co, "ЖК Самал");
+    const serik = await join("Серик");
+    const aibek = await join("Айбек");
+    await repo.setWorkPackage(co, serik, "монолит");
+    expect(await repo.toggleSite(co, serik, altyn)).toBe(true);
+    expect(await repo.toggleSite(co, aibek, altyn)).toBe(true);
+    expect(await repo.toggleSite(co, aibek, samal)).toBe(true);
+
+    const team = await repo.listTeam(co);
+    expect(team.map((p) => [p.name, p.workPackage, p.sites])).toEqual([
+      ["Айбек", null, ["ЖК Алтын", "ЖК Самал"]],
+      ["Серик", "монолит", ["ЖК Алтын"]],
+    ]);
+    const sites = await repo.listSites(co);
+    expect(sites.map((s) => [s.name, s.pmNames])).toEqual([
+      ["ЖК Алтын", ["Айбек", "Серик"]],
+      ["ЖК Самал", ["Айбек"]],
+    ]);
+  });
+
+  it("toggles a site off again, renames, and shows one PM's page", async () => {
+    const site = await repo.createSite(co, "Склад Береке");
+    const dina = await join("Дина");
+    await repo.toggleSite(co, dina, site);
+    expect(await repo.toggleSite(co, dina, site)).toBe(false);
+    await repo.renamePm(co, dina, "Дина Каримова");
+    const page = await repo.pmDetails(co, dina);
+    expect(page).toMatchObject({ name: "Дина Каримова", workPackage: null, connected: true });
+    expect(page?.sites.find((s) => s.siteId === site)).toMatchObject({ assigned: false });
+  });
+
+  it("disconnects a PM: off the team and sites, history kept, link usable no more", async () => {
+    const site = await repo.createSite(co, "ЖК Нур");
+    const userId = tg();
+    const r = await repo.redeemInvite(await repo.createInvite(co, owner), userId, "Ержан");
+    if (r.status !== "joined") throw new Error("not joined");
+    await repo.toggleSite(co, r.personId, site);
+    expect(await repo.disconnectPm(co, r.personId)).toBe(true);
+    expect((await repo.listTeam(co)).map((p) => p.name)).not.toContain("Ержан");
+    expect((await repo.pmDetails(co, r.personId))?.connected).toBe(false);
+    const person = await pool.query("select 1 from public.person where id = $1", [r.personId]);
+    expect(person.rowCount).toBe(1);
+    const identity = await pool.query(
+      "select 1 from public.channel_identity where external_id = $1",
+      [userId],
+    );
+    expect(identity.rowCount).toBe(0);
+  });
+
+  it("never touches another company's people or sites", async () => {
+    const serik = (await repo.listTeam(co))[0]?.personId ?? "";
+    expect(await repo.pmDetails(otherCo, serik)).toBeNull();
+    expect(await repo.disconnectPm(otherCo, serik)).toBe(false);
+    await expect(repo.renamePm(otherCo, serik, "Взлом")).resolves.toBe(false);
+    const foreignSite = await repo.createSite(otherCo, "Чужой объект");
+    await expect(repo.toggleSite(co, serik, foreignSite)).resolves.toBeNull();
+  });
+
+  it("remembers a question to the owner and hands it over once", async () => {
+    const chat = tg();
+    await repo.createPrompt(co, chat, 555, "site_name", null);
+    expect(await repo.takePrompt(chat, 555)).toMatchObject({
+      companyId: co,
+      kind: "site_name",
+      subjectId: null,
+    });
+    expect(await repo.takePrompt(chat, 555)).toBeNull();
+    expect(await repo.takePrompt(chat, 556)).toBeNull();
+  });
+});

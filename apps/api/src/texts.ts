@@ -57,7 +57,7 @@ export const DECISION_TEXTS = {
 export const OWNER_TEXTS = {
   replyHeader: "💬 Ответ владельца:",
   replySent: "📨 Отправлено ПМ",
-  hint: "Чтобы ответить ПМ, ответьте (Reply) на его карточку. Команды: /pending /active /history",
+  hint: "Чтобы ответить ПМ, ответьте (Reply) на его карточку. Команды: /pending /active /history /team /sites",
 } as const;
 
 // Owner commands and their lists (MVP S2). Approved by Darkhan 2026-10-09.
@@ -66,6 +66,8 @@ export const LIST_TEXTS = {
     { command: "pending", description: "Ждут решения" },
     { command: "active", description: "В работе" },
     { command: "history", description: "История" },
+    { command: "team", description: "Команда" },
+    { command: "sites", description: "Объекты" },
   ],
   titles: { pending: "Ждут решения", active: "В работе", history: "История" },
   none: "нет",
@@ -95,4 +97,33 @@ export const TEAM_TEXTS = {
   invite: "➕ Пригласить ПМ",
   sites: "🏗 Объекты",
   pmPage: "👷 Открыть",
+  // PM page.
+  sitesLabel: "Объекты",
+  since: "С нами с",
+  pmSites: "🏗 Объекты",
+  pmName: "✏️ Имя",
+  pmWork: "🔧 Участок работ",
+  pmOff: "🚫 Отключить",
+  back: "« Назад",
+  toTeam: "« Команда",
+  toSites: "« Объекты",
+  pickSites: (name: string) => `Объекты для ${name}. Нажмите, чтобы назначить или снять:`,
+  noSitesYet: "Объектов пока нет. Добавьте первый:",
+  confirmOff: (name: string) =>
+    `Отключить ${name}? Его сообщения перестанут приходить вам. История сохранится.`,
+  offYes: "Да, отключить",
+  cancel: "Отмена",
+  offDone: (name: string) => `🚫 ${name} отключён. Пригласить снова можно через /team.`,
+  notConnected: "отключён",
+  // Questions the bot asks (the owner answers by replying).
+  askName: (name: string) => `Новое имя для ${name}:`,
+  askWork: (name: string) => `Участок работ для ${name} (например: монолит, фасад):`,
+  askSite: "Название нового объекта:",
+  saved: "✅ Сохранено",
+  // Sites.
+  sitesTitle: "Объекты",
+  noSites: "Объектов пока нет.",
+  addSite: "➕ Добавить объект",
+  nobody: "нет ПМ",
+  sitePms: "ПМ",
 } as const;

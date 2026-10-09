@@ -102,7 +102,7 @@ describe("PostgresRequestRepo", () => {
       requestId: null,
       kind: "text",
       text: "арматуры не хватает, 380 тыс",
-      sender: { personId: pmId, role: "pm", name: "Серик" },
+      sender: { personId: pmId, role: "pm", name: "Серик", workPackage: null },
       timezone: "Asia/Almaty",
       sites: ["ЖК Алтын"],
       pmSite: "ЖК Алтын",

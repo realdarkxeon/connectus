@@ -30,7 +30,7 @@ const ctx: CardContext = {
   replyToExternalMessageId: null,
   transcript: null,
   externalFileId: null,
-  sender: { personId: "pm-1", role: "pm", name: "Серик" },
+  sender: { personId: "pm-1", role: "pm", name: "Серик", workPackage: null },
   timezone: "Asia/Almaty",
   sites: [],
   pmSite: null,
@@ -110,6 +110,9 @@ class FakeTelegram {
   sent: { chatId: string; text: string; options: SendOptions }[] = [];
   failAnswer = false;
   deleted: { chatId: string; ids: number[] }[] = [];
+  async botUsername() {
+    return "connectus_staging_bot";
+  }
   refuseDelete = false;
   async deleteMessages(chatId: string, ids: number[]) {
     if (this.refuseDelete) {

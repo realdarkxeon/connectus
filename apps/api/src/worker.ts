@@ -123,15 +123,15 @@ await boss.work<CardJob>(
       extractor,
       ...(stt && { stt }),
       clock,
-      ownerMessage: (ctx) => handleOwnerMessage(ctx, { requests, telegram, clock }),
+      ownerMessage: (ctx) => handleOwnerMessage(ctx, { requests, telegram, clock, team }),
     }),
   ),
 );
 await boss.work<ButtonJob>(
   QUEUES.button,
-  worker<ButtonJob>(QUEUES.button, (data) => handleButton(data, { requests, telegram })),
+  worker<ButtonJob>(QUEUES.button, (data) => handleButton(data, { requests, telegram, team })),
 );
-// Owners' command menu (/pending, /active, /history), in their chats only. A failure here
+// Owners' command menu (/pending, /active, /history, /team, /sites), in their chats only. A failure here
 // must not stop the worker: the commands work when typed even without the menu.
 for (const chatId of await requests.allOwnerChats()) {
   await telegram

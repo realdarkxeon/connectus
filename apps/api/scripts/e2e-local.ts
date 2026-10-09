@@ -396,6 +396,46 @@ try {
       .find((m) => m.chat_id === String(OWNER_TELEGRAM_ID) && m.text.includes("✅ Одобрено ·")),
   );
   check("tapping a number re-opens the card with its decision", reopened !== undefined);
+
+  // MVP S4: the owner invites a PM; the first person joins, a second one is refused.
+  const teamCommand = update(OWNER_TELEGRAM_ID, { text: "/team" });
+  teamCommand.update_id += 40;
+  teamCommand.message.message_id += 40;
+  await knock(teamCommand, SECRET);
+  const teamScreen = await waitFor(async () =>
+    sent.find(
+      (m) => m.chat_id === String(OWNER_TELEGRAM_ID) && /^(Команда|ПМ пока нет)/.test(m.text),
+    ),
+  );
+  check("/team shows the team", teamScreen !== undefined);
+  await knock(tap(OWNER_TELEGRAM_ID, "CBQ-E2E-4", "ti"), SECRET);
+  const linkMessage = await waitFor(async () =>
+    sent.find((m) => m.chat_id === String(OWNER_TELEGRAM_ID) && m.text.includes("?start=i_")),
+  );
+  const token = linkMessage?.text.match(/start=(i_[A-Za-z0-9_-]{22})/)?.[1];
+  check("➕ Пригласить ПМ gives a one-person link", token !== undefined);
+
+  const join = (fromId: number, n: number) => {
+    const u = update(fromId, { text: `/start ${token}` });
+    u.update_id += n;
+    u.message.message_id += n;
+    return u;
+  };
+  const NEW_PM = 900000000 + (Date.now() % 1_000_000) * 10 + 4;
+  await knock(join(NEW_PM, 50), SECRET);
+  const welcomed = await waitFor(async () =>
+    sent.find((m) => m.chat_id === String(NEW_PM) && m.text.includes("Вы подключены")),
+  );
+  check("the new PM joins with the link", welcomed !== undefined);
+  const ownerTold = await waitFor(async () =>
+    sent.find((m) => m.chat_id === String(OWNER_TELEGRAM_ID) && m.text.endsWith("присоединился.")),
+  );
+  check("the owner is told who joined", ownerTold !== undefined);
+  await knock(join(NEW_PM + 1, 60), SECRET);
+  const secondRefused = await waitFor(async () =>
+    sent.find((m) => m.chat_id === String(NEW_PM + 1) && m.text.includes("уже использована")),
+  );
+  check("a second person with the same link is refused", secondRefused !== undefined);
 } finally {
   for (const child of children) child.kill("SIGTERM");
   fakeTelegram.close();

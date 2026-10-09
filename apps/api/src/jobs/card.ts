@@ -76,7 +76,7 @@ export async function handleCard(job: CardJob, deps: CardDeps): Promise<void> {
         now: deps.clock.now(),
         timezone: ctx.timezone,
         sites: ctx.sites,
-        sender: { name: "ПМ", workPackage: null, site: ctx.pmSite },
+        sender: { name: "ПМ", workPackage: ctx.sender.workPackage, site: ctx.pmSite },
         messages: [text],
       });
       await deps.requests.saveExtraction(requestId, extraction);

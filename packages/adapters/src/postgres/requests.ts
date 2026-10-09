@@ -21,7 +21,12 @@ export type CardContext = {
   externalMessageId: string;
   externalFileId: string | null;
   replyToExternalMessageId: string | null;
-  sender: { personId: string; role: "owner" | "deputy" | "pm"; name: string };
+  sender: {
+    personId: string;
+    role: "owner" | "deputy" | "pm";
+    name: string;
+    workPackage: string | null;
+  };
   timezone: string;
   sites: string[];
   pmSite: string | null;
@@ -96,13 +101,15 @@ export class PostgresRequestRepo {
         personId: string;
         role: CardContext["sender"]["role"];
         name: string;
+        workPackage: string | null;
       }
     >(
       `select m.id as "messageId", m.company_id as "companyId", m.request_id as "requestId",
               m.kind, m.text, m.transcript, m.external_message_id as "externalMessageId",
               m.external_file_id as "externalFileId",
               m.reply_to_external_message_id as "replyToExternalMessageId",
-              p.id as "personId", p.role, p.display_name as name, c.timezone
+              p.id as "personId", p.role, p.display_name as name,
+              p.work_package as "workPackage", c.timezone
        from public.message m
        join public.person p on p.company_id = m.company_id and p.id = m.person_id
        join public.company c on c.id = m.company_id
@@ -119,10 +126,10 @@ export class PostgresRequestRepo {
        from public.site s where s.company_id = $1 order by s.name`,
       [row.companyId, row.personId],
     );
-    const { personId, role, name, ...rest } = row;
+    const { personId, role, name, workPackage, ...rest } = row;
     return {
       ...rest,
-      sender: { personId, role, name },
+      sender: { personId, role, name, workPackage },
       sites: sites.rows.map((s) => s.name),
       // The PM's site only when there is exactly one; otherwise the card's siteHint decides.
       pmSite: (() => {

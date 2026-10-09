@@ -9,10 +9,11 @@ import {
   type StoredRequest,
   type Verdict,
 } from "@connectus/adapters";
-import { decisionButtons, decodeButton } from "../buttons.ts";
+import { decisionButtons, decodeButton, decodeTeamButton } from "../buttons.ts";
 import { log } from "../log.ts";
 import { localTime, ownerMessage, splitForTelegram } from "../owner-card.ts";
 import { DECISION_TEXTS } from "../texts.ts";
+import { handleTeamButton, type TeamDeps } from "./team.ts";
 
 export type ButtonDeps = {
   requests: {
@@ -36,7 +37,9 @@ export type ButtonDeps = {
     edit(chatId: string, messageId: number, text: string): Promise<void>;
     deleteMessages(chatId: string, messageIds: number[]): Promise<void>;
     send(chatId: string, text: string, options?: SendOptions): Promise<number>;
-  };
+  } & TeamDeps["telegram"];
+  // Team-management buttons (MVP S4).
+  team?: TeamDeps["team"];
 };
 
 // The owner tapped a button (MVP S2). Who tapped is checked against our own records, never
@@ -44,7 +47,14 @@ export type ButtonDeps = {
 // removal is the same each time, and the PM's answer has its own receipt.
 export async function handleButton(job: ButtonJob, deps: ButtonDeps): Promise<void> {
   const button = decodeButton(job.data);
-  if (!button) return;
+  if (!button) {
+    const teamAction = decodeTeamButton(job.data);
+    if (teamAction && deps.team) {
+      const person = await deps.requests.personByTelegram(job.fromUserId);
+      await handleTeamButton(job, teamAction, person, { team: deps.team, telegram: deps.telegram });
+    }
+    return;
+  }
 
   const person = await deps.requests.personByTelegram(job.fromUserId);
   if (button.action === "open") {

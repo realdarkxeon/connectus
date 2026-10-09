@@ -37,7 +37,7 @@ const context = (overrides: Partial<CardContext> = {}): CardContext => ({
   replyToExternalMessageId: null,
   transcript: null,
   externalFileId: null,
-  sender: { personId: "pm-1", role: "pm", name: "Серик" },
+  sender: { personId: "pm-1", role: "pm", name: "Серик", workPackage: null },
   timezone: "Asia/Almaty",
   sites: ["ЖК Алтын"],
   pmSite: "ЖК Алтын",
@@ -272,6 +272,16 @@ describe("card job", () => {
     ]);
   });
 
+  it("shows the PM's work package on the card and gives it to the AI", async () => {
+    requests.ctx = context({
+      sender: { personId: "pm-1", role: "pm", name: "Серик", workPackage: "монолит" },
+    });
+    const { extractor, inputs } = fakeExtractor();
+    await handleCard({ messageId: "msg-1" }, deps(extractor));
+    expect(telegram.sent[0]?.text).toContain("От: Серик (монолит)");
+    expect(inputs[0]?.sender.workPackage).toBe("монолит");
+  });
+
   it("never sends the PM's name to the AI", async () => {
     const { extractor, inputs } = fakeExtractor();
     await handleCard({ messageId: "msg-1" }, deps(extractor));
@@ -366,7 +376,9 @@ describe("card job", () => {
   });
 
   it("hands a message from the owner to the owner handler, without a card", async () => {
-    requests.ctx = context({ sender: { personId: "o-1", role: "owner", name: "Владелец" } });
+    requests.ctx = context({
+      sender: { personId: "o-1", role: "owner", name: "Владелец", workPackage: null },
+    });
     const { extractor, inputs } = fakeExtractor();
     await handleCard({ messageId: "msg-1" }, deps(extractor));
     expect(inputs).toHaveLength(0);

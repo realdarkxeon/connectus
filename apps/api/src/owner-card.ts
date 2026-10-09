@@ -79,14 +79,18 @@ export function splitForTelegram(text: string, max = TELEGRAM_MAX): string[] {
 export function ownerMessage(
   card: Card | null,
   ctx: {
-    sender: { name: string };
+    sender: { name: string; workPackage?: string | null };
     pmSite: string | null;
     text: string | null;
     transcript?: string | null;
     timezone: string;
   },
 ): string {
-  const pm: CardSender = { name: ctx.sender.name, workPackage: null, site: ctx.pmSite };
+  const pm: CardSender = {
+    name: ctx.sender.name,
+    workPackage: ctx.sender.workPackage ?? null,
+    site: ctx.pmSite,
+  };
   return card
     ? formatOwnerCard(card, pm, ctx.timezone)
     : formatRawFallback(pm, ctx.text?.trim() || ctx.transcript?.trim() || CARD_TEXTS.noText);

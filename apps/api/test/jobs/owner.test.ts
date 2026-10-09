@@ -22,7 +22,7 @@ const ownerMessage = (overrides: Partial<CardContext> = {}): CardContext => ({
   replyToExternalMessageId: `${OWNER}:900`,
   transcript: null,
   externalFileId: null,
-  sender: { personId: "owner-1", role: "owner", name: "Владелец" },
+  sender: { personId: "owner-1", role: "owner", name: "Владелец", workPackage: null },
   timezone: "Asia/Almaty",
   sites: [],
   pmSite: null,
@@ -34,7 +34,7 @@ const pmMessage: CardContext = {
   text: "арматуры не хватает",
   externalMessageId: `${PM}:57`,
   replyToExternalMessageId: null,
-  sender: { personId: "pm-1", role: "pm", name: "Серик" },
+  sender: { personId: "pm-1", role: "pm", name: "Серик", workPackage: null },
 };
 
 class FakeRequests {
@@ -83,11 +83,57 @@ class FakeTelegram {
 let requests: FakeRequests;
 let telegram: FakeTelegram;
 beforeEach(() => {
+  team = new FakeTeam();
   requests = new FakeRequests();
   telegram = new FakeTelegram();
 });
+class FakeTeam {
+  prompts = new Map<
+    string,
+    { companyId: string; kind: "site_name" | "pm_name" | "work_package"; subjectId: string | null }
+  >();
+  sites: string[] = [];
+  renamed: [string, string][] = [];
+  work: [string, string | null][] = [];
+  async takePrompt(chatId: string, messageId: number) {
+    const key = `${chatId}:${messageId}`;
+    const p = this.prompts.get(key) ?? null;
+    this.prompts.delete(key);
+    return p;
+  }
+  async createSite(_co: string, name: string) {
+    this.sites.push(name);
+    return "site-1";
+  }
+  async renamePm(_co: string, personId: string, name: string) {
+    this.renamed.push([personId, name]);
+    return true;
+  }
+  async setWorkPackage(_co: string, personId: string, work: string | null) {
+    this.work.push([personId, work]);
+    return true;
+  }
+  async listTeam() {
+    return [];
+  }
+  async listSites() {
+    return this.sites.map((name) => ({ siteId: "site-1", name, pmNames: [] }));
+  }
+  async pmDetails(_co: string, personId: string) {
+    return {
+      personId,
+      name: "Серик",
+      workPackage: null,
+      connected: true,
+      joinedAt: new Date("2026-10-09T05:00:00Z"),
+      sites: [],
+    };
+  }
+}
+
+let team: FakeTeam;
 const clock = { now: () => new Date("2026-10-09T09:00:00Z") };
-const deps = (): OwnerDeps => ({ requests, telegram, clock });
+const deps = (): OwnerDeps => ({ requests, telegram, clock, team });
 
 describe("owner replies to a card", () => {
   it("sends the owner's words to the PM, verbatim, as a reply to the PM's message", async () => {
@@ -129,7 +175,7 @@ describe("owner replies to a card", () => {
     expect(telegram.sent).toEqual([
       {
         chatId: OWNER,
-        text: "Чтобы ответить ПМ, ответьте (Reply) на его карточку. Команды: /pending /active /history",
+        text: "Чтобы ответить ПМ, ответьте (Reply) на его карточку. Команды: /pending /active /history /team /sites",
         options: {},
       },
     ]);
@@ -168,6 +214,55 @@ describe("owner commands", () => {
       deps(),
     );
     expect(requests.listed).toEqual([]);
-    expect(telegram.sent[0]?.text).toContain("Команды: /pending /active /history");
+    expect(telegram.sent[0]?.text).toContain("Команды: /pending /active /history /team /sites");
+  });
+});
+
+describe("owner team commands and answers", () => {
+  it("/team shows the team screen", async () => {
+    await handleOwnerMessage(
+      ownerMessage({ text: "/team", replyToExternalMessageId: null }),
+      deps(),
+    );
+    expect(telegram.sent[0]?.text).toBe("ПМ пока нет. Пригласите первого:");
+  });
+
+  it("/sites shows the sites screen", async () => {
+    await handleOwnerMessage(
+      ownerMessage({ text: "/sites", replyToExternalMessageId: null }),
+      deps(),
+    );
+    expect(telegram.sent[0]?.text).toBe("Объектов пока нет.");
+  });
+
+  it("a reply to 'Название нового объекта' creates the site", async () => {
+    team.prompts.set(`${OWNER}:900`, { companyId: "co-1", kind: "site_name", subjectId: null });
+    await handleOwnerMessage(ownerMessage({ text: "ЖК Алтын" }), deps());
+    expect(team.sites).toEqual(["ЖК Алтын"]);
+    expect(telegram.sent[0]?.text).toBe("✅ Сохранено");
+    expect(telegram.sent[1]?.text).toContain("1. ЖК Алтын");
+  });
+
+  it("a reply to a name question renames the PM and shows their page", async () => {
+    team.prompts.set(`${OWNER}:900`, { companyId: "co-1", kind: "pm_name", subjectId: "pm-9" });
+    await handleOwnerMessage(ownerMessage({ text: "Серик Ахметов" }), deps());
+    expect(team.renamed).toEqual([["pm-9", "Серик Ахметов"]]);
+    expect(telegram.sent[1]?.text).toContain("👷 Серик");
+  });
+
+  it("a reply to a work-package question sets it", async () => {
+    team.prompts.set(`${OWNER}:900`, {
+      companyId: "co-1",
+      kind: "work_package",
+      subjectId: "pm-9",
+    });
+    await handleOwnerMessage(ownerMessage({ text: "монолит" }), deps());
+    expect(team.work).toEqual([["pm-9", "монолит"]]);
+  });
+
+  it("ignores a question that belongs to another company", async () => {
+    team.prompts.set(`${OWNER}:900`, { companyId: "co-2", kind: "site_name", subjectId: null });
+    await handleOwnerMessage(ownerMessage({ text: "ЖК Взлом" }), deps());
+    expect(team.sites).toEqual([]);
   });
 });
