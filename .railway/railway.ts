@@ -5,7 +5,10 @@ import { defineRailway, github, service } from "railway/iac";
 // then `railway config apply`. Secret values never live here: they are Railway shared
 // variables, set in the Railway dashboard and referenced with ctx.shared.
 export default defineRailway((ctx, project) => {
-  const source = github("realdarkxeon/connectus", { branch: "main" });
+  // Production deploys main. Staging deploys the mvp branch while the MVP is built there
+  // (docs/decisions.md); switch back to main when mvp is merged.
+  const branch = ctx.isEnvironment("production") ? "main" : "mvp";
+  const source = github("realdarkxeon/connectus", { branch });
 
   const build = {
     builder: "DOCKERFILE" as const,
@@ -73,6 +76,8 @@ export default defineRailway((ctx, project) => {
       ...env,
       SUPABASE_URL: ctx.shared.SUPABASE_URL,
       SUPABASE_SECRET_KEY: ctx.shared.SUPABASE_SECRET_KEY,
+      // Card extraction (MVP S1). Required outside local; the worker refuses to start without it.
+      ANTHROPIC_API_KEY: ctx.shared.ANTHROPIC_API_KEY,
     },
   });
 
